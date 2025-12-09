@@ -1,3 +1,75 @@
-project_name: aopy_nwb_conv
-data:
-  root: data
+name: aopy_nwb_conv
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  # Python version
+  - python>=3.8,<3.13
+  
+  # Core scientific computing
+  - numpy
+  - scipy
+  - pandas
+  - xarray
+  
+  # Data I/O
+  - h5py
+  - pytables  # provides 'tables' package
+  - pyyaml
+  - xlrd
+  - openpyxl
+  
+  # Visualization
+  - matplotlib>=3.9
+  - seaborn>=0.13.2
+  - pillow
+  
+  # Signal processing
+  - pywavelets
+  - scikit-learn>=1.0
+  - statsmodels
+  
+  # System utilities
+  - psutil
+  - tqdm
+  
+  # Symbolic math
+  - sympy
+  
+  # NWB and neurophysiology
+  - pynwb
+  
+  # Development tools
+  - pytest>=7.0
+  - pytest-cov>=4.0
+  - pytest-xdist>=3.0
+  - ruff>=0.1.0
+  - black>=23.0
+  - mypy>=1.0
+  - pre-commit>=3.0
+  
+  # Documentation
+  - sphinx>=6.0
+  - sphinx_rtd_theme>=1.0
+  - myst-parser>=2.0
+  
+  # Jupyter
+  - jupyter
+  - ipykernel>=6.0
+  - ipywidgets>=8.0
+  - notebook
+  - jupyterlab
+  
+  # Build tools
+  - pip
+  - hatchling
+  
+  # pip-only dependencies (not available via conda or better from pip)
+  - pip:
+    - nitime
+    - open-ephys-python-tools
+    - aolab-bmi3d>=1.0
+    - ibllib
+    - remodnav
+    - nwbwidgets>=0.11.0
+    - sphinx-autodoc-typehints>=1.0
