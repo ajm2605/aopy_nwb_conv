@@ -1,0 +1,50 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aopy_nwb_conv"
+version = "0.9.3"
+description = "code repo to conver aoLab aopy data format to NWB @UW"
+readme = "README.md"
+requires-python = ">=3.8"
+authors = [
+    {name = "ajm2605", email = "ajm2605@uw.edu"}
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "xarray",
+    "pandas",
+    "psutil",
+    "h5py",
+    "tables",
+    "scikit-learn>=1.0",
+    "statsmodels",
+    "nitime",
+    "xlrd",
+    "openpyxl",
+    "matplotlib>=3.9",
+    "scipy",
+    "PyWavelets",
+    "Pillow",
+    "pyyaml",
+    "tqdm",
+    "open-ephys-python-tools",
+    "aolab-bmi3d>=1.0",
+    "sympy",
+    "ibllib",
+    "seaborn>=0.13.2",
+    "remodnav",
+]
+
+[project.urls]
+Homepage = "https://github.com/aolabNeuro/analyze"

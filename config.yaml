@@ -1,0 +1,3 @@
+project_name: aopy_nwb_conv
+data:
+  root: data
