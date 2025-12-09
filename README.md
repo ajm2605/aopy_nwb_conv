@@ -1,8 +1,5 @@
 # README Structure for NWB Converter Project
 
-Here's a comprehensive README structure for your project:
-
-```markdown
 # AOlab HDF5 to NWB Converter
 
 A Python package for converting AOlab's proprietary HDF5 neurophysiology data to the Neurodata Without Borders (NWB) format.
@@ -27,6 +24,22 @@ This converter enables AOlab members to transform their preprocessed experimenta
 - **Data Validation**: Automatic checks for timing consistency and data integrity
 - **NWB Compliant**: Generates valid NWB 2.x files compatible with the entire NWB ecosystem
 
+## Roadmap
+
+### Phase 1 (Current)
+- 🚧 Convert preprocessed HDF5 files
+- 🚧 Support all major data modalities
+- 🚧 Batch processing capabilities
+- 🚧 Comprehensive documentation
+- 🚧 Example notebooks
+
+### Phase 2 (Future)
+- ⬜ Direct binary file conversion
+- ⬜ Real-time preprocessing pipeline
+- ⬜ GUI for non-programmers
+- ⬜ DANDI archive integration
+- ⬜ Automated quality control
+<!-- 
 ## Installation
 
 ### Prerequisites
@@ -304,22 +317,6 @@ pytest tests/
 - **Issues**: Report bugs or request features on [GitHub Issues](https://github.com/aolab/nwb-converter/issues)
 - **Questions**: Ask questions on [GitHub Discussions](https://github.com/aolab/nwb-converter/discussions)
 - **Lab Contact**: [your-email@institution.edu](mailto:your-email@institution.edu)
-
-## Roadmap
-
-### Phase 1 (Current)
-- ✅ Convert preprocessed HDF5 files
-- ✅ Support all major data modalities
-- ✅ Batch processing capabilities
-- 🚧 Comprehensive documentation
-- 🚧 Example notebooks
-
-### Phase 2 (Future)
-- ⬜ Direct binary file conversion
-- ⬜ Real-time preprocessing pipeline
-- ⬜ GUI for non-programmers
-- ⬜ DANDI archive integration
-- ⬜ Automated quality control
 
 ## Citation
 
