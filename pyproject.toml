@@ -143,10 +143,14 @@ exclude_lines = [
     "@(abc\\.)?abstractmethod",
 ]
 
+# Tell hatchling where to find your package
+[tool.hatch.build.targets.wheel]
+packages = ["src/aopy_nwb_conv"]
+
 # MyPy configuration (optional but recommended)
-[tool.mypy]
-python_version = "3.8"
-warn_return_any = true
-warn_unused_configs = true
-disallow_untyped_defs = false  # set to true for strict typing
-ignore_missing_imports = true  # until you add type stubs for dependencies
+#[tool.mypy]
+#python_version = "3.8"
+#warn_return_any = true
+#warn_unused_configs = true
+#disallow_untyped_defs = false  # set to true for strict typing
+#ignore_missing_imports = true  # until you add type stubs for dependencies
