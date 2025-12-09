@@ -39,6 +39,52 @@ This converter enables AOlab members to transform their preprocessed experimenta
 - ⬜ GUI for non-programmers
 - ⬜ DANDI archive integration
 - ⬜ Automated quality control
+
+## First-Time Setup
+
+### 1. Create your local configuration
+```bash
+# Copy the template
+cp config/config.template.yaml config/config.yaml
+
+# Edit with your paths
+nano config/config.yaml  # or vim, code, etc.
+```
+
+Edit `config/config.yaml`:
+```yaml
+data:
+  data_root: "/mnt/server/lab_data"  # Your mounted server path
+  output_root: "/mnt/server/nwb_output"
+
+logging:
+  level: "INFO"
+  log_dir: "logs"
+```
+
+### 2. Verify setup
+```python
+from aopy_nwb_conv.utils.config import get_config
+
+config = get_config()
+print(f"Data root: {config.data_root}")
+```
+
+## Usage
+
+Now your code automatically uses the configured path:
+```python
+# No need to specify path!
+from aopy_nwb_conv.core.data_locator import DataLocator
+
+locator = DataLocator()  # Uses config.yaml
+session = locator.locate_session("MonkeyA", "2024-03-15", "session_001")
+```
+
+Or override if needed:
+```python
+locator = DataLocator(data_root="/different/path")
+```
 <!-- 
 ## Installation
 

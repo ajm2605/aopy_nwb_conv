@@ -1,0 +1,11 @@
+data:
+  data_root: "/tmp/test_data"
+  output_root: "/tmp/test_output"
+
+logging:
+  level: "DEBUG"
+  log_dir: "test_logs"
+
+conversion:
+  compression: true
+  chunk_size: 5000

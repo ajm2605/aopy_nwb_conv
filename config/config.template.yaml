@@ -1,0 +1,18 @@
+# Configuration template for aopy_nwb_conv
+# Copy this to config.yaml and fill in your paths
+
+data:
+  # Root directory where subject data is stored
+  data_root: "/path/to/your/data"
+  
+  # Optional: output directory for NWB files
+  output_root: "/path/to/output/nwb"
+
+# Optional: other settings
+logging:
+  level: "INFO"
+  log_dir: "logs"
+
+conversion:
+  compression: true
+  chunk_size: 10000
