@@ -6,12 +6,14 @@ import yaml
 import os
 
 # Default search paths for config file
-DEFAULT_CONFIG_PATHS = [
-    Path.cwd() / "config.yaml",                    # Current directory
-    Path.cwd() / "config" / "config.yaml",         # config/ subdirectory
-    Path.home() / ".aopy_nwb_conv" / "config.yaml", # User home directory
-    Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Package directory
-]
+def get_default_config_paths():
+    """Return list of default config paths (evaluated at call time)."""
+    return [
+        Path.cwd() / "config.yaml",                    # Current directory
+        Path.cwd() / "config" / "config.yaml",         # config/ subdirectory
+        Path.home() / ".aopy_nwb_conv" / "config.yaml", # User home directory
+        Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Package directory
+    ]
 
 
 class Config:
@@ -51,7 +53,7 @@ class Config:
             raise FileNotFoundError(f"Config file from env var not found: {path}")
         
         # 3. Search default paths
-        for path in DEFAULT_CONFIG_PATHS:
+        for path in get_default_config_paths():
             if path.exists():
                 return path
         
@@ -167,3 +169,8 @@ def set_config(config_path: Path):
     """
     global _global_config
     _global_config = Config(config_path)
+
+def reset_config():  # Add this function
+    """Reset global config (primarily for testing)."""
+    global _global_config
+    _global_config = None

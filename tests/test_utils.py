@@ -5,7 +5,7 @@ import os
 import tempfile
 import yaml
 from pathlib import Path
-from aopy_nwb_conv.utils.config import Config, get_config, set_config
+from aopy_nwb_conv.utils.config import Config, get_config, set_config, reset_config
 
 class TestConfigLoading:
     """Test configuration file loading."""
@@ -188,6 +188,13 @@ class TestConfigProperties:
 class TestGlobalConfig:
     """Test global config instance management."""
     
+    @pytest.fixture(autouse=True)
+    def reset_global_config(self):
+        """Reset global config before and after each test."""
+        reset_config()  # Clean before
+        yield
+        reset_config()
+    
     def test_get_config_creates_singleton(self, tmp_path):
         """Test that get_config returns same instance."""
         config1 = get_config()
@@ -243,7 +250,7 @@ class TestGlobalConfig:
 
 class TestConfigSearchPaths:
     """Test configuration file search order."""
-    
+
     def test_search_order_explicit_path_first(self, tmp_path, monkeypatch):
         """Test that explicit path takes priority."""
         # Create config in explicit path
@@ -266,6 +273,7 @@ class TestConfigSearchPaths:
         env_config = tmp_path / 'env.yaml'
         with open(env_config, 'w') as f:
             yaml.dump({'data': {'data_root': 'env'}}, f)
+        
         monkeypatch.setenv('AOPY_NWB_CONFIG', str(env_config))
         
         config = Config()
@@ -282,6 +290,7 @@ class TestConfigSearchPaths:
             yaml.dump({'data': {'data_root': 'local'}}, f)
         
         config = Config()
+        print(config.get('data.data_root'))
         assert config.get('data.data_root') == 'local'
 
 """Tests for validating user-generated configuration."""
