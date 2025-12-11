@@ -1,0 +1,6 @@
+data:
+  data_root: "/boop/nowhere/"
+  output_root: "/also/nonexistent"
+
+logging:
+  level: "INVALID_LEVEL"

@@ -1,0 +1,3 @@
+data:
+  data_root: "/tmp/test_data"
+# Missing other sections - should use defaults

@@ -1,3 +1,8 @@
+#Ignore lcoal config
+config/config.yaml
+config.yaml
+*.local.yaml
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
