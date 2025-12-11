@@ -7,6 +7,25 @@ import yaml
 from pathlib import Path
 from aopy_nwb_conv.utils.config import Config, get_config, set_config, reset_config
 
+
+def test_check_env():
+    # Check if it's currently set
+    value = os.getenv('AOPY_NWB_CONFIG')
+    print(f"AOPY_NWB_CONFIG = {value}")
+    
+    # Or check if it exists
+    if 'AOPY_NWB_CONFIG' in os.environ:
+        print("Environment variable is set")
+    else:
+        print("Environment variable is NOT set")
+
+def test_get_paths():
+    config = Config()
+    paths = config.get_paths()
+    for k in paths.keys():
+        assert paths[k].exists(), f"Config path does not exist: {p}"
+
+
 class TestConfigLoading:
     """Test configuration file loading."""
     
@@ -307,27 +326,14 @@ class TestUserConfigValidation:
             return config_file
         return _create
     
-    def test_valid_config_with_existing_paths(self, tmp_path, create_config_file):
-        """Test that config validates when paths exist."""
-        # Create actual directories
-        data_dir = tmp_path / 'data'
-        output_dir = tmp_path / 'output'
-        data_dir.mkdir()
-        output_dir.mkdir()
-        
-        config_data = {
-            'data': {
-                'data_root': str(data_dir),
-                'output_root': str(output_dir),
-            }
-        }
-        
-        config_file = create_config_file(config_data)
-        config = Config(config_path=config_file)
-        
-        # Validate paths exist
-        assert config.data_root.exists()
-        assert config.output_root.exists() or config.output_root == Path('./output')
+    def test_valid_config_file_exists(self):
+        config = Config()
+
+        assert config is not None, "User needs to define a config file in default locations per readme."
+        assert config.data_root is not None, "data_root must be defined in the config file."
+        assert config.output_root is not None, "output_root must be defined in the config file."
+        assert config.data_root.exists(), "data_root path in config file does not exist."
+        assert config.output_root.exists(), "output_root path in config file does not exist."
     
     def test_config_with_nonexistent_data_root(self, tmp_path, create_config_file):
         """Test config with non-existent data_root."""
@@ -343,28 +349,6 @@ class TestUserConfigValidation:
         # Config loads but path doesn't exist
         assert config.data_root == Path('/this/path/definitely/does/not/exist')
         assert not config.data_root.exists()
-    
-    def test_config_validates_path_structure(self, tmp_path, create_config_file):
-        """Test that data_root has expected structure."""
-        # Create proper structure
-        data_dir = tmp_path / 'data'
-        subject_dir = data_dir / 'MonkeyA' / '2024-03-15' / 'session_001'
-        subject_dir.mkdir(parents=True)
-        
-        config_data = {
-            'data': {
-                'data_root': str(data_dir),
-            }
-        }
-        
-        config_file = create_config_file(config_data)
-        config = Config(config_path=config_file)
-        
-        # Verify structure exists
-        assert config.data_root.exists()
-        assert (config.data_root / 'MonkeyA').exists()
-        assert (config.data_root / 'MonkeyA' / '2024-03-15' / 'session_001').exists()
-
 
 class TestConfigFileFormat:
     """Test validation of YAML format and structure."""

@@ -33,6 +33,7 @@ class Config:
             config_path: Path to config file. If None, searches default locations.
         """
         self.config_path = self._find_config(config_path)
+        print(self.config_path)
         self._config = self._load_config()
     
     def _find_config(self, config_path: Optional[Path]) -> Optional[Path]:
@@ -46,7 +47,7 @@ class Config:
         
         # 2. Environment variable
         env_path = os.getenv("AOPY_NWB_CONFIG")
-        if env_path:
+        if env_path is not None:
             path = Path(env_path)
             if path.exists():
                 return path
@@ -99,6 +100,7 @@ class Config:
                 result[key] = value
         return result
     
+    
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation.
         
@@ -124,6 +126,20 @@ class Config:
         
         return value
     
+    def get_paths(self) -> Dict[str, Path]:
+        """Get relevant paths from configuration."""
+        data_root = Path(self.get('data.data_root'))
+        data_output = Path(self.get('data.output_root'))
+        subdirs = self.get('data.subdirs', {})
+
+        paths = {'data_root': data_root, 'data_output': data_output}
+
+        for key, subdir in subdirs.items():
+            subdir_path = data_root / subdir
+            paths[key] = subdir_path
+        
+        return paths
+
     @property
     def data_root(self) -> Optional[Path]:
         """Get data root path."""
