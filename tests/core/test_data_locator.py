@@ -1,8 +1,45 @@
 
 import pytest
+from pathlib import Path
 
-from aopy_nwb_conv.core.data_locator import data_locator
+from aopy_nwb_conv.core.data_locator import data_locator, get_valid_preprocessed_dates
+from aopy_nwb_conv.utils.config import Config
 
+class TestDateValidation:
+    """Test date validation in data locator."""
+
+#    @pytest.mark.parametrize("date_str,expected", [
+#        ("2024-03-15", True),
+#        ("2024-02-30", False),  # Invalid date
+#        ("15-03-2024", False),  # Wrong format
+#        ("2024/03/15", False),  # Wrong separator
+#        ("20240315", False),    # No separators
+#    ])
+
+    def test_get_valid_preprocessed_dates(self):
+        """Test retrieval of valid dates for a subject."""
+        config = Config()
+        assert config is not None, "User must specify a config file"
+        paths = config.get_paths()
+        print(paths)
+        subjects = config.get_nhp_subjects()
+        assert subjects is not None, "NHP subjects must be defined in config"
+        print(paths)
+        all_folders = []
+        for key, subject in subjects.items():
+            print(f"Subject code: {key}, Name: {subject}")
+            folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)  
+            all_folders.extend(folders)
+
+        for item in all_folders[0].iterdir():
+            print(item)
+        assert len(all_folders) > 0, "No valid preprocessed folders found."
+
+    #def test_date_validation(self, date_str, expected):
+    #    """Test date validation logic."""
+    #    locator = data_locator("/path/to/test/data")
+    #    is_valid = locator._is_valid_date(date_str)
+    #    assert is_valid == expected
 
 def test_subject_validation():
     """Test that invalid subject IDs raise an error."""

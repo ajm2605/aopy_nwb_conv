@@ -20,12 +20,21 @@ def test_check_env():
     else:
         print("Environment variable is NOT set")
 
-def test_get_paths():
-    config = Config()
-    paths = config.get_paths()
-    for k in paths.keys():
-        assert paths[k].exists(), f"Config path does not exist: {p}"
+class TestCommonConfigCalls:
+    def test_get_paths(self):
+        config = Config()
+        assert config is not None, "Personalized config file must be defined. See readme."
+        paths = config.get_paths()
+        for k in paths.keys():
+            assert paths[k].exists(), f"Config path does not exist: {p}"
 
+    def test_get_nhp_subjects(self):
+        config = Config()
+        subjects = config.get_nhp_subjects()
+        assert isinstance(subjects, dict), "NHP subjects should be a dictionary."
+        assert len(subjects) > 0, "NHP subjects dictionary should not be empty."
+
+        
 
 class TestConfigLoading:
     """Test configuration file loading."""

@@ -128,6 +128,7 @@ class Config:
 
         return value
 
+
     def get_paths(self) -> Dict[str, Path]:
         """Get relevant paths from configuration."""
         data_root = Path(self.get('data.data_root'))
@@ -141,6 +142,20 @@ class Config:
             paths[key] = subdir_path
 
         return paths
+    
+    def get_nhp_subjects(self) -> Dict[str, str]:
+        """Get mapping of NHP subject codes to names."""
+        nhp_subjects = self.get('nhp_subjects', {})
+        assert nhp_subjects is not None, "NHP subjects not defined in config."
+
+        return nhp_subjects
+
+    def get_date_format(self) -> Dict[str, str]:
+        """Get date string format"""
+        date_format = self.get('nhp_subjects', {})
+        assert date_format is not None, "NHP subjects not defined in config."
+
+        return date_format
 
     @property
     def data_root(self) -> Optional[Path]:
