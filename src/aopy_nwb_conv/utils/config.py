@@ -1,9 +1,11 @@
 """Configuration management for aopy_nwb_conv."""
 
-from pathlib import Path
-from typing import Optional, Dict, Any
-import yaml
 import os
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import yaml
+
 
 # Default search paths for config file
 def get_default_config_paths():
@@ -25,7 +27,7 @@ class Config:
     2. AOPY_NWB_CONFIG environment variable
     3. Default search paths
     """
-    
+
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize configuration.
         
@@ -35,7 +37,7 @@ class Config:
         self.config_path = self._find_config(config_path)
         print(self.config_path)
         self._config = self._load_config()
-    
+
     def _find_config(self, config_path: Optional[Path]) -> Optional[Path]:
         """Find configuration file."""
         # 1. Explicit path provided
@@ -44,7 +46,7 @@ class Config:
             if path.exists():
                 return path
             raise FileNotFoundError(f"Config file not found: {path}")
-        
+
         # 2. Environment variable
         env_path = os.getenv("AOPY_NWB_CONFIG")
         if env_path is not None:
@@ -52,27 +54,27 @@ class Config:
             if path.exists():
                 return path
             raise FileNotFoundError(f"Config file from env var not found: {path}")
-        
+
         # 3. Search default paths
         for path in get_default_config_paths():
             if path.exists():
                 return path
-        
+
         # No config found - will use defaults
         return None
-    
+
     def _load_config(self) -> Dict[str, Any]:
         """Load configuration from file."""
         if self.config_path is None:
             return self._get_defaults()
-        
-        with open(self.config_path, 'r') as f:
+
+        with open(self.config_path) as f:
             config = yaml.safe_load(f)
-        
+
         # Merge with defaults
         defaults = self._get_defaults()
         return self._merge_configs(defaults, config)
-    
+
     def _get_defaults(self) -> Dict[str, Any]:
         """Get default configuration."""
         return {
@@ -89,7 +91,7 @@ class Config:
                 'chunk_size': 10000,
             }
         }
-    
+
     def _merge_configs(self, base: Dict, override: Dict) -> Dict:
         """Recursively merge two config dictionaries."""
         result = base.copy()
@@ -99,8 +101,8 @@ class Config:
             else:
                 result[key] = value
         return result
-    
-    
+
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation.
         
@@ -117,15 +119,15 @@ class Config:
         """
         keys = key.split('.')
         value = self._config
-        
+
         for k in keys:
             if isinstance(value, dict) and k in value:
                 value = value[k]
             else:
                 return default
-        
+
         return value
-    
+
     def get_paths(self) -> Dict[str, Path]:
         """Get relevant paths from configuration."""
         data_root = Path(self.get('data.data_root'))
@@ -137,7 +139,7 @@ class Config:
         for key, subdir in subdirs.items():
             subdir_path = data_root / subdir
             paths[key] = subdir_path
-        
+
         return paths
 
     @property
@@ -145,12 +147,12 @@ class Config:
         """Get data root path."""
         root = self.get('data.data_root')
         return Path(root) if root else None
-    
+
     @property
     def output_root(self) -> Path:
         """Get output root path."""
         return Path(self.get('data.output_root', './output'))
-    
+
     def __repr__(self) -> str:
         return f"Config(path={self.config_path})"
 
@@ -170,10 +172,10 @@ def get_config(config_path: Optional[Path] = None, reload: bool = False) -> Conf
         Config instance
     """
     global _global_config
-    
+
     if _global_config is None or reload:
         _global_config = Config(config_path)
-    
+
     return _global_config
 
 
