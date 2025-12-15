@@ -20,7 +20,7 @@ def get_default_config_paths():
 
 class Config:
     """Configuration manager for aopy_nwb_conv.
-    
+
     Loads configuration from YAML file or environment variables.
     Priority order:
     1. Explicitly provided config_path
@@ -30,7 +30,7 @@ class Config:
 
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize configuration.
-        
+
         Args:
             config_path: Path to config file. If None, searches default locations.
         """
@@ -105,14 +105,14 @@ class Config:
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get configuration value using dot notation.
-        
+
         Args:
             key: Configuration key (e.g., 'data.data_root')
             default: Default value if key not found
-            
+
         Returns:
             Configuration value
-            
+
         Example:
             >>> config = Config()
             >>> data_root = config.get('data.data_root')
@@ -128,6 +128,7 @@ class Config:
 
         return value
 
+
     def get_paths(self) -> Dict[str, Path]:
         """Get relevant paths from configuration."""
         data_root = Path(self.get('data.data_root'))
@@ -141,6 +142,20 @@ class Config:
             paths[key] = subdir_path
 
         return paths
+
+    def get_nhp_subjects(self) -> Dict[str, str]:
+        """Get mapping of NHP subject codes to names."""
+        nhp_subjects = self.get('nhp_subjects', {})
+        assert nhp_subjects is not None, "NHP subjects not defined in config."
+
+        return nhp_subjects
+
+    def get_date_format(self) -> Dict[str, str]:
+        """Get date string format"""
+        date_format = self.get('date_format', None)
+        assert date_format is not None, "NHP subjects not defined in config."
+
+        return date_format
 
     @property
     def data_root(self) -> Optional[Path]:
@@ -163,11 +178,11 @@ _global_config: Optional[Config] = None
 
 def get_config(config_path: Optional[Path] = None, reload: bool = False) -> Config:
     """Get global configuration instance.
-    
+
     Args:
         config_path: Path to config file (only used on first call or if reload=True)
         reload: Force reload of configuration
-        
+
     Returns:
         Config instance
     """
@@ -181,7 +196,7 @@ def get_config(config_path: Optional[Path] = None, reload: bool = False) -> Conf
 
 def set_config(config_path: Path):
     """Set global configuration from file.
-    
+
     Args:
         config_path: Path to config file
     """

@@ -8,6 +8,7 @@ data:
   # Optional: output directory for NWB files
   output_root: "/path/to/output/nwb"
 
+
 # Optional: other settings
 logging:
   level: "INFO"
