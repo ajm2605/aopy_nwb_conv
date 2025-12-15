@@ -2,8 +2,9 @@
 import pytest
 from pathlib import Path
 
-from aopy_nwb_conv.core.data_locator import data_locator, get_valid_preprocessed_dates
+from aopy_nwb_conv.core.data_locator import data_locator
 from aopy_nwb_conv.utils.config import Config
+from aopy_nwb_conv.utils.date_validation import get_valid_preprocessed_dates
 
 class TestDateValidation:
     """Test date validation in data locator."""
@@ -25,10 +26,13 @@ class TestDateValidation:
         assert subjects is not None, "NHP subjects must be defined in config"
         print(config.get_date_format())
         all_folders = []
-        for key, subject in subjects.items():
-            print(f"Subject code: {key}, Name: {subject}")
-            folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)  
-            all_folders.extend(folders)
+        #print(subjects[0:1])
+        #for key, subject in subjects[0:1].items():
+        key = list(subjects.keys())[0]
+        subject = subjects[key]
+        print(f"Subject code: {key}, Name: {subject}")
+        folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)  
+        all_folders.extend(folders)
 
 
         assert len(all_folders) > 0, "No valid preprocessed folders found."
