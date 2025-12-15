@@ -152,7 +152,7 @@ class Config:
 
     def get_date_format(self) -> Dict[str, str]:
         """Get date string format"""
-        date_format = self.get('nhp_subjects', {})
+        date_format = self.get('date_format', None)
         assert date_format is not None, "NHP subjects not defined in config."
 
         return date_format

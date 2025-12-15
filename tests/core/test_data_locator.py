@@ -21,18 +21,16 @@ class TestDateValidation:
         config = Config()
         assert config is not None, "User must specify a config file"
         paths = config.get_paths()
-        print(paths)
         subjects = config.get_nhp_subjects()
         assert subjects is not None, "NHP subjects must be defined in config"
-        print(paths)
+        print(config.get_date_format())
         all_folders = []
         for key, subject in subjects.items():
             print(f"Subject code: {key}, Name: {subject}")
             folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)  
             all_folders.extend(folders)
 
-        for item in all_folders[0].iterdir():
-            print(item)
+
         assert len(all_folders) > 0, "No valid preprocessed folders found."
 
     #def test_date_validation(self, date_str, expected):
