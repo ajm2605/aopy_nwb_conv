@@ -34,7 +34,7 @@ class TestCommonConfigCalls:
         assert isinstance(subjects, dict), "NHP subjects should be a dictionary."
         assert len(subjects) > 0, "NHP subjects dictionary should not be empty."
 
-        
+
 
 class TestConfigLoading:
     """Test configuration file loading."""
@@ -539,7 +539,7 @@ class TestConfigIntegration:
         from aopy_nwb_conv.utils.config import get_config
 
         # Get config without setting it (uses defaults)
-        config = get_config(reload=True)
+        get_config(reload=True)
 
         # Should raise ValueError with helpful message
         with pytest.raises(ValueError, match="data_root must be provided"):

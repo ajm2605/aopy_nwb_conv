@@ -1,10 +1,11 @@
 
+
 import pytest
-from pathlib import Path
 
 from aopy_nwb_conv.core.data_locator import data_locator
 from aopy_nwb_conv.utils.config import Config
 from aopy_nwb_conv.utils.date_validation import get_valid_preprocessed_dates
+
 
 class TestDateValidation:
     """Test date validation in data locator."""
@@ -31,7 +32,7 @@ class TestDateValidation:
         key = list(subjects.keys())[0]
         subject = subjects[key]
         print(f"Subject code: {key}, Name: {subject}")
-        folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)  
+        folders = get_valid_preprocessed_dates(paths['monkey_preprocessed'], subject)
         all_folders.extend(folders)
 
 
