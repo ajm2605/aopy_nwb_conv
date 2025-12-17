@@ -3,7 +3,7 @@ Updated tests for get_valid_preprocessed_dates that properly mock the Config cla
 
 These tests match your actual Config implementation structure.
 """
-
+import re
 import pytest
 from pathlib import Path
 import tempfile
@@ -35,7 +35,7 @@ class TestGetValidPreprocessedDatesUnit:
         """Test with no HDF files in directory"""
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
-                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=re.compile(r'\d{8}')):
                     result = get_valid_preprocessed_dates("/fake/path", "subject123")
                     
                     assert result == []
