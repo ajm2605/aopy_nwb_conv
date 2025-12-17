@@ -19,7 +19,7 @@ def get_default_config_paths():
 
 
 class Config:
-    """Configuration manager for aopy_nwb_conv.
+    """Configuget_valid_preprocessed_datesration manager for aopy_nwb_conv.
 
     Loads configuration from YAML file or environment variables.
     Priority order:

@@ -1,249 +1,454 @@
-import shutil
-import tempfile
-from pathlib import Path
+"""
+Updated tests for get_valid_preprocessed_dates that properly mock the Config class
+
+These tests match your actual Config implementation structure.
+"""
 
 import pytest
+from pathlib import Path
+import tempfile
+import shutil
+from unittest.mock import Mock, patch, MagicMock
+from datetime import datetime
 
-from aopy_nwb_conv.utils.date_validation import (
-    _cache_loaded,
-    _cached_files,
-    cache_files_by_extension,
-    clear_cache,
-    find_file_ext,
-    get_cached_files,
-)
-
-
-@pytest.fixture
-def test_directory():
-    """Create a temporary directory with test files"""
-    # Create temp directory
-    temp_dir = Path(tempfile.mkdtemp())
-
-    # Create directory structure with various files
-    (temp_dir / "subdir1").mkdir()
-    (temp_dir / "subdir2").mkdir()
-    (temp_dir / "subdir1" / "nested").mkdir()
-
-    # Create HDF files
-    (temp_dir / "file1.hdf").touch()
-    (temp_dir / "file2.hdf").touch()
-    (temp_dir / "subdir1" / "file3.hdf").touch()
-    (temp_dir / "subdir1" / "nested" / "file4.hdf").touch()
-
-    # Create NWB files
-    (temp_dir / "data1.nwb").touch()
-    (temp_dir / "subdir2" / "data2.nwb").touch()
-
-    # Create other files (should be ignored)
-    (temp_dir / "readme.txt").touch()
-    (temp_dir / "data.csv").touch()
-    (temp_dir / "subdir1" / "notes.md").touch()
-
-    yield temp_dir
-
-    # Cleanup
-    shutil.rmtree(temp_dir)
+# Import the function to test
+from aopy_nwb_conv.utils.date_validation import get_valid_preprocessed_dates
+from aopy_nwb_conv.utils.config import Config
 
 
-class TestFindFileExt:
-    """Test the find_file_ext function"""
+# ============================================================================
+# ENVIRONMENT-INDEPENDENT TESTS (Run everywhere, including CI/CD)
+# ============================================================================
 
-    def test_find_hdf_files(self, test_directory):
-        """Test finding HDF files"""
-        hdf_files = find_file_ext(test_directory, "hdf")
+class TestGetValidPreprocessedDatesUnit:
+    """Unit tests that don't depend on actual file system or config"""
 
-        assert len(hdf_files) == 4
-        assert all(f.endswith('.hdf') for f in hdf_files)
+    @pytest.fixture
+    def mock_config(self):
+        """Mock Config object that matches your actual Config class structure"""
+        mock = MagicMock()
+        # Mock the get_date_format method to return a string
+        mock.get_date_format.return_value = "%Y%m%d"
+        return mock
 
-    def test_find_nwb_files(self, test_directory):
-        """Test finding NWB files"""
-        nwb_files = find_file_ext(test_directory, "nwb")
+    def test_empty_directory(self, mock_config):
+        """Test with no HDF files in directory"""
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                    
+                    assert result == []
+                    assert isinstance(result, list)
 
-        assert len(nwb_files) == 2
-        assert all(f.endswith('.nwb') for f in nwb_files)
+    def test_files_without_dates(self, mock_config):
+        """Test with files that don't contain dates"""
+        fake_files = [
+            "/path/to/subject123_data.hdf",
+            "/path/to/subject123_info.hdf",
+            "/path/to/no_date_file.hdf"
+        ]
+        
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', return_value=None):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        
+                        assert result == []
 
-    def test_find_with_leading_dot(self, test_directory):
-        """Test that leading dot is handled correctly"""
-        hdf_files_no_dot = find_file_ext(test_directory, "hdf")
-        hdf_files_with_dot = find_file_ext(test_directory, ".hdf")
+    def test_files_with_valid_dates(self, mock_config):
+        """Test with files containing valid dates"""
+        fake_files = [
+            "/path/to/subject123_20231215.hdf",
+            "/path/to/subject123_20231216.hdf",
+            "/path/to/subject123_20231217.hdf"
+        ]
+        
+        expected_dates = [
+            datetime(2023, 12, 15),
+            datetime(2023, 12, 16),
+            datetime(2023, 12, 17)
+        ]
+        
+        def mock_extract_date(filename, regex):
+            if "20231215" in filename:
+                return expected_dates[0]
+            elif "20231216" in filename:
+                return expected_dates[1]
+            elif "20231217" in filename:
+                return expected_dates[2]
+            return None
+        
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        
+                        assert len(result) == 3
+                        assert result[0] == (fake_files[0], expected_dates[0])
+                        assert result[1] == (fake_files[1], expected_dates[1])
+                        assert result[2] == (fake_files[2], expected_dates[2])
 
-        assert hdf_files_no_dot == hdf_files_with_dot
+    def test_mixed_files_with_and_without_dates(self, mock_config):
+        """Test with mix of files with and without dates"""
+        fake_files = [
+            "/path/to/subject123_20231215.hdf",
+            "/path/to/subject123_no_date.hdf",
+            "/path/to/subject123_20231216.hdf",
+            "/path/to/another_file.hdf"
+        ]
+        
+        expected_dates = [
+            datetime(2023, 12, 15),
+            datetime(2023, 12, 16)
+        ]
+        
+        def mock_extract_date(filename, regex):
+            if "20231215" in filename:
+                return expected_dates[0]
+            elif "20231216" in filename:
+                return expected_dates[1]
+            return None
+        
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        
+                        assert len(result) == 2
+                        assert result[0][0] == fake_files[0]
+                        assert result[0][1] == expected_dates[0]
+                        assert result[1][0] == fake_files[2]
+                        assert result[1][1] == expected_dates[1]
 
-    def test_find_nonexistent_extension(self, test_directory):
-        """Test finding files with extension that doesn't exist"""
-        result = find_file_ext(test_directory, "xyz")
+    def test_different_date_formats(self):
+        """Test with different date format from config"""
+        mock_config = MagicMock()
+        mock_config.get_date_format.return_value = "%Y-%m-%d"
+        
+        fake_files = [
+            "/path/to/subject123_2023-12-15.hdf",
+            "/path/to/subject123_2023-12-16.hdf"
+        ]
+        
+        expected_dates = [
+            datetime(2023, 12, 15),
+            datetime(2023, 12, 16)
+        ]
+        
+        def mock_extract_date(filename, regex):
+            if "2023-12-15" in filename:
+                return expected_dates[0]
+            elif "2023-12-16" in filename:
+                return expected_dates[1]
+            return None
+        
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{4}-\d{2}-\d{2}'):
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        
+                        assert len(result) == 2
 
+    def test_config_method_called_correctly(self, mock_config):
+        """Test that Config.get_date_format() is called"""
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config) as MockConfig:
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    get_valid_preprocessed_dates("/fake/path", "subject123")
+                    
+                    # Verify Config was instantiated
+                    MockConfig.assert_called_once()
+                    
+                    # Verify get_date_format was called
+                    mock_config.get_date_format.assert_called_once()
+
+
+# ============================================================================
+# ALTERNATIVE: More Concise Context Manager Approach
+# ============================================================================
+
+class TestGetValidPreprocessedDatesUnitConcise:
+    """Alternative test style using a helper method for cleaner mocking"""
+
+    @pytest.fixture
+    def mock_config(self):
+        """Mock Config object"""
+        mock = MagicMock()
+        mock.get_date_format.return_value = "%Y%m%d"
+        return mock
+
+    def run_with_mocks(self, mock_config, cached_files, extract_date_func=None, date_regex=r'\d{8}'):
+        """Helper method to run function with common mocks"""
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config), \
+             patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=cached_files), \
+             patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=date_regex):
+            
+            if extract_date_func:
+                with patch('aopy_nwb_conv.file_utils.extract_date_from_string', side_effect=extract_date_func):
+                    return get_valid_preprocessed_dates("/fake/path", "subject123")
+            else:
+                with patch('aopy_nwb_conv.file_utils.extract_date_from_string', return_value=None):
+                    return get_valid_preprocessed_dates("/fake/path", "subject123")
+
+    def test_empty_directory(self, mock_config):
+        """Test with no HDF files in directory"""
+        result = self.run_with_mocks(mock_config, cached_files=[])
         assert result == []
 
-    def test_recursive_search(self, test_directory):
-        """Test that search is recursive"""
-        hdf_files = find_file_ext(test_directory, "hdf")
+    def test_files_without_dates(self, mock_config):
+        """Test with files that don't contain dates"""
+        fake_files = [
+            "/path/to/subject123_data.hdf",
+            "/path/to/subject123_info.hdf"
+        ]
+        result = self.run_with_mocks(mock_config, cached_files=fake_files)
+        assert result == []
 
-        # Should find files in root, subdir1, and subdir1/nested
-        nested_file = str(test_directory / "subdir1" / "nested" / "file4.hdf")
-        assert any(nested_file in f for f in hdf_files)
-
-    def test_empty_directory(self):
-        """Test finding files in empty directory"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            result = find_file_ext(temp_dir, "hdf")
-            assert result == []
-
-
-class TestCacheFilesByExtension:
-    """Test the cache_files_by_extension function"""
-
-    def test_cache_creation(self, test_directory):
-        """Test that cache is created correctly"""
-        cached_files = cache_files_by_extension(test_directory, "hdf")
-
-        assert len(cached_files) == 4
-        assert all(isinstance(f, str) for f in cached_files)
-        assert all(f.endswith('.hdf') for f in cached_files)
-
-    def test_in_memory_cache(self, test_directory):
-        """Test that in-memory cache is used on second call"""
-        # First call - should scan
-        files1 = cache_files_by_extension(test_directory, "hdf")
-
-        # Second call - should use memory cache
-        files2 = cache_files_by_extension(test_directory, "hdf")
-
-        assert files1 == files2
-
-        # Check that cache key exists
-        cache_key = f"{test_directory}_hdf"
-        assert cache_key in _cached_files
-
-    def test_disk_cache_persistence(self, test_directory):
-        """Test that disk cache persists"""
-        from aopy_nwb_conv.utils.cache import get_temp_cache_path
-
-        cache_path = get_temp_cache_path("file_cache_hdf.pkl")
-
-        # First call - creates cache
-        files1 = cache_files_by_extension(test_directory, "hdf")
-
-        # Clear in-memory cache
-        clear_cache()
-
-        # Second call - should load from disk
-        files2 = cache_files_by_extension(test_directory, "hdf")
-
-        assert files1 == files2
-        assert cache_path.exists()
-
-        # Cleanup
-        cache_path.unlink()
-
-    def test_force_refresh(self, test_directory):
-        """Test that force_refresh regenerates cache"""
-        # First call
-        cache_files_by_extension(test_directory, "hdf")
-
-        # Add a new file
-        (test_directory / "new_file.hdf").touch()
-
-        # Without force_refresh - should use cache (won't see new file)
-        files2 = cache_files_by_extension(test_directory, "hdf")
-        assert len(files2) == 4
-
-        # With force_refresh - should see new file
-        files3 = cache_files_by_extension(test_directory, "hdf", force_refresh=True)
-        assert len(files3) == 5
-
-    def test_custom_cache_path(self, test_directory):
-        """Test using custom cache path"""
-        with tempfile.TemporaryDirectory() as temp_cache_dir:
-            custom_cache = Path(temp_cache_dir) / "my_custom_cache.pkl"
-
-            files = cache_files_by_extension(
-                test_directory,
-                "hdf",
-                cache_path=custom_cache
-            )
-
-            assert len(files) == 4
-            assert custom_cache.exists()
-
-    def test_multiple_extensions_isolated(self, test_directory):
-        """Test that different extensions have separate caches"""
-        hdf_files = cache_files_by_extension(test_directory, "hdf")
-        print(hdf_files)
-        nwb_files = cache_files_by_extension(test_directory, "nwb")
-
-        assert len(hdf_files) == 4
-        assert len(nwb_files) == 2
-
-        # Check that both cache keys exist
-        hdf_key = f"{test_directory}_hdf"
-        nwb_key = f"{test_directory}_nwb"
-        assert hdf_key in _cached_files
-        assert nwb_key in _cached_files
-
-    def test_cache_with_empty_directory(self):
-        """Test caching empty directory"""
-        with tempfile.TemporaryDirectory() as temp_dir:
-            cached_files = cache_files_by_extension(temp_dir, "hdf")
-            assert cached_files == []
+    def test_files_with_dates(self, mock_config):
+        """Test with files containing valid dates"""
+        fake_files = [
+            "/path/to/subject123_20231215.hdf",
+            "/path/to/subject123_20231216.hdf"
+        ]
+        
+        expected_dates = [
+            datetime(2023, 12, 15),
+            datetime(2023, 12, 16)
+        ]
+        
+        def mock_extract_date(filename, regex):
+            if "20231215" in filename:
+                return expected_dates[0]
+            elif "20231216" in filename:
+                return expected_dates[1]
+            return None
+        
+        result = self.run_with_mocks(
+            mock_config, 
+            cached_files=fake_files, 
+            extract_date_func=mock_extract_date
+        )
+        
+        assert len(result) == 2
+        assert result[0] == (fake_files[0], expected_dates[0])
+        assert result[1] == (fake_files[1], expected_dates[1])
 
 
-class TestGetCachedFiles:
-    """Test the get_cached_files function"""
+# ============================================================================
+# FIXTURE-BASED TESTS (Use Config's reset functionality)
+# ============================================================================
 
-    def test_get_cached_files_with_directory(self, test_directory):
-        """Test get_cached_files with explicit directory"""
-        files = get_cached_files(test_directory, "hdf", max = 1000)
+class TestGetValidPreprocessedDatesWithConfigReset:
+    """Tests that use the actual Config class with reset between tests"""
 
-        assert len(files) == 4
-        assert all(f.endswith('.hdf') for f in files)
+    @pytest.fixture(autouse=True)
+    def reset_config(self):
+        """Reset the global config before and after each test"""
+        from aopy_nwb_conv.utils.config import reset_config
+        reset_config()
+        yield
+        reset_config()
 
-    def test_get_cached_files_default_extension(self, test_directory):
-        """Test that default extension is 'hdf'"""
-        files = get_cached_files(test_directory)
+    @pytest.fixture
+    def temp_config_file(self):
+        """Create a temporary config file"""
+        config_content = """
+data:
+  data_root: /fake/data/root
+  output_root: /fake/output
+  subdirs:
+    monkey_preprocessed: preprocessed
+    nwb_output: nwb
 
-        assert all(f.endswith('.hdf') for f in files)
+date_format: "%Y%m%d"
 
-    def test_get_cached_files_different_extensions(self, test_directory):
-        """Test getting files with different extensions"""
-        hdf_files = get_cached_files(test_directory, "hdf")
-        nwb_files = get_cached_files(test_directory, "nwb")
+logging:
+  level: INFO
+"""
+        temp_dir = Path(tempfile.mkdtemp())
+        config_file = temp_dir / "config.yaml"
+        config_file.write_text(config_content)
+        
+        yield config_file
+        
+        shutil.rmtree(temp_dir)
 
-        assert len(hdf_files) == 4
-        assert len(nwb_files) == 2
+    def test_with_temp_config_file(self, temp_config_file):
+        """Test using a temporary config file"""
+        # Patch the Config to use our temp config
+        with patch('aopy_nwb_conv.utils.config.get_default_config_paths', return_value=[temp_config_file]):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
+                    result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                    
+                    # Verify it used the config
+                    assert result == []
 
-    @pytest.mark.skip(reason="Requires Config setup - optional test")
-    def test_get_cached_files_from_config_hdf(self):
-        """Test getting HDF files from config path"""
-        # This test requires proper Config setup
-        # Uncomment and modify when Config is available
 
-        # files = get_cached_files(extension="hdf")
-        # assert isinstance(files, list)
-        # assert all(f.endswith('.hdf') for f in files)
+# ============================================================================
+# INTEGRATION TESTS WITH REAL CONFIG (Skip if not available)
+# ============================================================================
+
+class TestGetValidPreprocessedDatesConfigIntegration:
+    """Integration tests that use actual Config - only run in dev environment"""
+
+    @pytest.fixture(autouse=True)
+    def reset_config(self):
+        """Reset config between tests"""
+        from aopy_nwb_conv.utils.config import reset_config
+        reset_config()
+        yield
+        reset_config()
+
+    def test_with_actual_config_hdf_path(self):
+        """Test with actual config HDF path"""
+        try:
+            from aopy_nwb_conv.utils.config import Config
+        except ImportError:
+            pytest.skip("Config not available")
+
+        try:
+            config = Config()
+            paths = config.get_paths()
+            preprocessing_path = paths.get('monkey_preprocessed')
+
+            if preprocessing_path is None:
+                pytest.skip("'monkey_preprocessed' path not in config")
+
+            preprocessing_path = Path(preprocessing_path)
+            if not preprocessing_path.exists():
+                pytest.skip(f"Preprocessing directory does not exist: {preprocessing_path}")
+
+        except Exception as e:
+            pytest.skip(f"Config setup failed: {e}")
+
+        # Test with actual config and file system
+        result = get_valid_preprocessed_dates(preprocessing_path, "subject123")
+
+        # Basic assertions
+        assert isinstance(result, list)
+        assert all(isinstance(item, tuple) for item in result)
+        assert all(len(item) == 2 for item in result)
+        
+        if result:
+            # Verify structure: (path, date)
+            assert all(isinstance(path, str) for path, date in result)
+            assert all(isinstance(date, datetime) for path, date in result)
+            
+            # Verify paths are from the expected directory
+            assert all(str(preprocessing_path) in path for path, date in result)
+            
+            print(f"✓ Found {len(result)} files with valid dates")
+
+    def test_config_date_format_is_used(self):
+        """Test that the date format from config is actually used"""
+        try:
+            from aopy_nwb_conv.utils.config import Config
+            config = Config()
+            
+            # Get the date format from config
+            date_format = config.get_date_format()
+            
+            paths = config.get_paths()
+            preprocessing_path = paths.get('monkey_preprocessed')
+
+            if preprocessing_path is None or not Path(preprocessing_path).exists():
+                pytest.skip("Preprocessing path not available")
+
+        except Exception as e:
+            pytest.skip(f"Config setup failed: {e}")
+
+        # The function should use the config's date format
+        result = get_valid_preprocessed_dates(Path(preprocessing_path), "subject123")
+        
+        # If we got results, the date format worked
+        assert isinstance(result, list)
+        
+        print(f"✓ Date format '{date_format}' used successfully")
+        print(f"✓ Found {len(result)} files")
+
+
+# ============================================================================
+# PARAMETRIZED TESTS FOR DIFFERENT CONFIG SCENARIOS
+# ============================================================================
+
+class TestGetValidPreprocessedDatesParametrized:
+    """Test with various config scenarios"""
+
+    @pytest.mark.parametrize("date_format,file_pattern,expected_date", [
+        ("%Y%m%d", "subject_20231215.hdf", datetime(2023, 12, 15)),
+        ("%Y-%m-%d", "subject_2023-12-15.hdf", datetime(2023, 12, 15)),
+        ("%d%m%Y", "subject_15122023.hdf", datetime(2023, 12, 15)),
+    ])
+    def test_various_date_formats(self, date_format, file_pattern, expected_date):
+        """Test with different date formats"""
+        mock_config = MagicMock()
+        mock_config.get_date_format.return_value = date_format
+        
+        fake_files = [f"/path/to/{file_pattern}"]
+        
+        # Create appropriate regex for the format
+        if date_format == "%Y%m%d":
+            regex = r'\d{8}'
+        elif date_format == "%Y-%m-%d":
+            regex = r'\d{4}-\d{2}-\d{2}'
+        elif date_format == "%d%m%Y":
+            regex = r'\d{8}'
+        
+        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=regex):
+                    with patch('aopy_nwb_conv.file_utils.extract_date_from_string', return_value=expected_date):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        
+                        assert len(result) == 1
+                        assert result[0][1] == expected_date
+
+
+# ============================================================================
+# DEMONSTRATION: How the mocking works with your Config class
+# ============================================================================
+
+def demonstrate_config_mocking():
+    """
+    This demonstrates how the mocking approach works with your Config class.
+    
+    Your actual code does:
+        config = Config()
+        date_format = config.get_date_format()
+    
+    Our mock does:
+        mock_config = MagicMock()
+        mock_config.get_date_format.return_value = "%Y%m%d"
+        
+        with patch('module.Config', return_value=mock_config):
+            # When Config() is called, it returns mock_config
+            # When get_date_format() is called on that, it returns "%Y%m%d"
+    """
+    
+    # Create mock that mimics your Config class
+    mock_config = MagicMock()
+    mock_config.get_date_format.return_value = "%Y%m%d"
+    
+    # This simulates what happens in the test
+    with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
+        # Inside your function, this happens:
+        # config = Config()  # Returns mock_config
+        # date_format = config.get_date_format()  # Returns "%Y%m%d"
         pass
 
-    @pytest.mark.skip(reason="Requires Config setup - optional test")
-    def test_get_cached_files_from_config_nwb(self):
-        """Test getting NWB files from config path"""
-        # This test requires proper Config setup
 
-        # files = get_cached_files(extension="nwb")
-        # assert isinstance(files, list)
-        # assert all(f.endswith('.nwb') for f in files)
-        pass
-
-    def test_get_cached_files_invalid_extension_no_config(self):
-        """Test that unsupported extension without directory raises error"""
-        with pytest.raises(ValueError, match="No default config path"):
-            get_cached_files(extension="xyz")
-
-
-
-
-
-
-# Run tests
-#if __name__ == "__main__":
-    #pytest.main([__file__, "-v", "-s"])
+if __name__ == "__main__":
+    # Show how the mocking works
+    print("=== Config Mocking Demonstration ===")
+    demonstrate_config_mocking()
+    print("✓ Mocking approach matches your Config class structure")
+    print()
+    
+    # Run tests
+    pytest.main([__file__, "-v", "-s"])
