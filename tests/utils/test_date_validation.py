@@ -36,8 +36,7 @@ class TestGetValidPreprocessedDatesUnit:
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=re.compile(r'\d{8}')):
-                    result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                    
+                    result = get_valid_preprocessed_dates("/fake/path", "subject123", max=1000, force_refresh=True)
                     assert result == []
                     assert isinstance(result, list)
 
@@ -53,8 +52,7 @@ class TestGetValidPreprocessedDatesUnit:
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
                     with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', return_value=None):
-                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                        
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123", max=1000, force_refresh=True)
                         assert result == []
 
     def test_files_with_valid_dates(self, mock_config):
@@ -64,28 +62,61 @@ class TestGetValidPreprocessedDatesUnit:
             "/path/to/subject123_20231216.hdf",
             "/path/to/subject123_20231217.hdf"
         ]
-        
         expected_dates = [
             datetime(2023, 12, 15),
             datetime(2023, 12, 16),
             datetime(2023, 12, 17)
         ]
         
-        def mock_extract_date(filename, regex):
-            if "20231215" in filename:
-                return expected_dates[0]
-            elif "20231216" in filename:
-                return expected_dates[1]
-            elif "20231217" in filename:
-                return expected_dates[2]
+        def mock_extract_date(file_name, date_regex, date_format="%Y%m%d"):
+            """
+            Mock version of extract_date_from_string that simulates regex matching
+            and date parsing behavior.
+            """
+            match = date_regex.search(file_name)
+            print('Properly using the mock_extract_date function')
+            if match:
+                date_str = match.group()
+                try:
+                    return datetime.strptime(date_str, date_format)
+                except ValueError:
+                    return None
             return None
         
-        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
-            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
-                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
-                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
-                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+        print("=" * 50)
+        print("Starting test")
+        print("=" * 50)
+
+        with patch('aopy_nwb_conv.utils.date_validation.Config', return_value=mock_config) as mock_config_class:
+            with patch('aopy_nwb_conv.utils.date_validation.get_cached_files', return_value=fake_files) as mock_get_files:
+                with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=re.compile(r'\d{8}')) as mock_regex:
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date) as mock_extract:
+
                         
+                        print(f"Mock Config called: {mock_config_class.called}")
+                        print(f"Mock get_cached_files called: {mock_get_files.called}")
+                        print(f"Mock define_date_regex called: {mock_regex.called}")
+                        print(f"Mock extract_date_from_string called: {mock_extract.called}")
+                        
+                        result = get_valid_preprocessed_dates(
+                            "/fake/path", 
+                            "subject123", 
+                            max=1000, 
+                            force_refresh=True
+                        )
+                        
+                        print(f"\nAfter function call:")
+                        print(f"Mock get_cached_files called: {mock_get_files.called}")
+                        print(f"Mock get_cached_files call_count: {mock_get_files.call_count}")
+                        print(f"Mock define_date_regex called: {mock_regex.called}")
+                        print(f"Mock extract called: {mock_extract.called}")
+                        print(f"Mock extract call_count: {mock_extract.call_count}")
+                        print(f"Mock extract call_args_list: {mock_extract.call_args_list}")
+                        
+                        print(f'\nThe Result is: {result}')
+                        print(f'Result length: {len(result)}')
+                        print(f'Result type: {type(result)}')
+                        print(f'The Result is: {result}')
                         assert len(result) == 3
                         assert result[0] == (fake_files[0], expected_dates[0])
                         assert result[1] == (fake_files[1], expected_dates[1])
