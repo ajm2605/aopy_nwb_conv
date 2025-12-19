@@ -4,17 +4,16 @@ Updated tests for get_valid_preprocessed_dates that properly mock the Config cla
 These tests match your actual Config implementation structure.
 """
 import re
-import pytest
-from pathlib import Path
-import tempfile
 import shutil
-from unittest.mock import Mock, patch, MagicMock
+import tempfile
 from datetime import datetime
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 # Import the function to test
 from aopy_nwb_conv.utils.date_validation import get_valid_preprocessed_dates
-from aopy_nwb_conv.utils.config import Config
-
 
 # ============================================================================
 # ENVIRONMENT-INDEPENDENT TESTS (Run everywhere, including CI/CD)
@@ -47,7 +46,7 @@ class TestGetValidPreprocessedDatesUnit:
             "/path/to/subject123_info.hdf",
             "/path/to/no_date_file.hdf"
         ]
-        
+
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
@@ -67,7 +66,7 @@ class TestGetValidPreprocessedDatesUnit:
             datetime(2023, 12, 16),
             datetime(2023, 12, 17)
         ]
-        
+
         def mock_extract_date(file_name, date_regex, date_format="%Y%m%d"):
             """
             Mock version of extract_date_from_string that simulates regex matching
@@ -82,7 +81,7 @@ class TestGetValidPreprocessedDatesUnit:
                 except ValueError:
                     return None
             return None
-        
+
         print("=" * 50)
         print("Starting test")
         print("=" * 50)
@@ -92,27 +91,27 @@ class TestGetValidPreprocessedDatesUnit:
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=re.compile(r'\d{8}')) as mock_regex:
                     with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date) as mock_extract:
 
-                        
+
                         print(f"Mock Config called: {mock_config_class.called}")
                         print(f"Mock get_cached_files called: {mock_get_files.called}")
                         print(f"Mock define_date_regex called: {mock_regex.called}")
                         print(f"Mock extract_date_from_string called: {mock_extract.called}")
-                        
+
                         result = get_valid_preprocessed_dates(
-                            "/fake/path", 
-                            "subject123", 
-                            max=1000, 
+                            "/fake/path",
+                            "subject123",
+                            max=1000,
                             force_refresh=True
                         )
-                        
-                        print(f"\nAfter function call:")
+
+                        print("\nAfter function call:")
                         print(f"Mock get_cached_files called: {mock_get_files.called}")
                         print(f"Mock get_cached_files call_count: {mock_get_files.call_count}")
                         print(f"Mock define_date_regex called: {mock_regex.called}")
                         print(f"Mock extract called: {mock_extract.called}")
                         print(f"Mock extract call_count: {mock_extract.call_count}")
                         print(f"Mock extract call_args_list: {mock_extract.call_args_list}")
-                        
+
                         print(f'\nThe Result is: {result}')
                         print(f'Result length: {len(result)}')
                         print(f'Result type: {type(result)}')
@@ -130,25 +129,25 @@ class TestGetValidPreprocessedDatesUnit:
             "/path/to/subject123_20231216.hdf",
             "/path/to/another_file.hdf"
         ]
-        
+
         expected_dates = [
             datetime(2023, 12, 15),
             datetime(2023, 12, 16)
         ]
-        
+
         def mock_extract_date(filename, regex):
             if "20231215" in filename:
                 return expected_dates[0]
             elif "20231216" in filename:
                 return expected_dates[1]
             return None
-        
+
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
                     with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
-                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                        
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
+
                         assert len(result) == 2
                         assert result[0][0] == fake_files[0]
                         assert result[0][1] == expected_dates[0]
@@ -159,30 +158,30 @@ class TestGetValidPreprocessedDatesUnit:
         """Test with different date format from config"""
         mock_config = MagicMock()
         mock_config.get_date_format.return_value = "%Y-%m-%d"
-        
+
         fake_files = [
             "/path/to/subject123_2023-12-15.hdf",
             "/path/to/subject123_2023-12-16.hdf"
         ]
-        
+
         expected_dates = [
             datetime(2023, 12, 15),
             datetime(2023, 12, 16)
         ]
-        
+
         def mock_extract_date(filename, regex):
             if "2023-12-15" in filename:
                 return expected_dates[0]
             elif "2023-12-16" in filename:
                 return expected_dates[1]
             return None
-        
+
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{4}-\d{2}-\d{2}'):
                     with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
                         result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                        
+
                         assert len(result) == 2
 
     def test_config_method_called_correctly(self, mock_config):
@@ -190,11 +189,11 @@ class TestGetValidPreprocessedDatesUnit:
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config) as MockConfig:
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
-                    get_valid_preprocessed_dates("/fake/path", "subject123")
-                    
+                    get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
+
                     # Verify Config was instantiated
                     MockConfig.assert_called_once()
-                    
+
                     # Verify get_date_format was called
                     mock_config.get_date_format.assert_called_once()
 
@@ -218,13 +217,13 @@ class TestGetValidPreprocessedDatesUnitConcise:
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config), \
              patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=cached_files), \
              patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=date_regex):
-            
+
             if extract_date_func:
-                with patch('aopy_nwb_conv.file_utils.extract_date_from_string', side_effect=extract_date_func):
-                    return get_valid_preprocessed_dates("/fake/path", "subject123")
+                with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=extract_date_func):
+                    return get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
             else:
-                with patch('aopy_nwb_conv.file_utils.extract_date_from_string', return_value=None):
-                    return get_valid_preprocessed_dates("/fake/path", "subject123")
+                with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', return_value=None):
+                    return get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
 
     def test_empty_directory(self, mock_config):
         """Test with no HDF files in directory"""
@@ -246,25 +245,25 @@ class TestGetValidPreprocessedDatesUnitConcise:
             "/path/to/subject123_20231215.hdf",
             "/path/to/subject123_20231216.hdf"
         ]
-        
+
         expected_dates = [
             datetime(2023, 12, 15),
             datetime(2023, 12, 16)
         ]
-        
+
         def mock_extract_date(filename, regex):
             if "20231215" in filename:
                 return expected_dates[0]
             elif "20231216" in filename:
                 return expected_dates[1]
             return None
-        
+
         result = self.run_with_mocks(
-            mock_config, 
-            cached_files=fake_files, 
+            mock_config,
+            cached_files=fake_files,
             extract_date_func=mock_extract_date
         )
-        
+
         assert len(result) == 2
         assert result[0] == (fake_files[0], expected_dates[0])
         assert result[1] == (fake_files[1], expected_dates[1])
@@ -304,9 +303,9 @@ logging:
         temp_dir = Path(tempfile.mkdtemp())
         config_file = temp_dir / "config.yaml"
         config_file.write_text(config_content)
-        
+
         yield config_file
-        
+
         shutil.rmtree(temp_dir)
 
     def test_with_temp_config_file(self, temp_config_file):
@@ -315,8 +314,8 @@ logging:
         with patch('aopy_nwb_conv.utils.config.get_default_config_paths', return_value=[temp_config_file]):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=[]):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{8}'):
-                    result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                    
+                    result = get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
+
                     # Verify it used the config
                     assert result == []
 
@@ -359,21 +358,21 @@ class TestGetValidPreprocessedDatesConfigIntegration:
             pytest.skip(f"Config setup failed: {e}")
 
         # Test with actual config and file system
-        result = get_valid_preprocessed_dates(preprocessing_path, "subject123")
+        result = get_valid_preprocessed_dates(preprocessing_path, "subject123", max=1000)
 
         # Basic assertions
         assert isinstance(result, list)
         assert all(isinstance(item, tuple) for item in result)
         assert all(len(item) == 2 for item in result)
-        
+
         if result:
             # Verify structure: (path, date)
             assert all(isinstance(path, str) for path, date in result)
             assert all(isinstance(date, datetime) for path, date in result)
-            
+
             # Verify paths are from the expected directory
             assert all(str(preprocessing_path) in path for path, date in result)
-            
+
             print(f"✓ Found {len(result)} files with valid dates")
 
     def test_config_date_format_is_used(self):
@@ -381,10 +380,10 @@ class TestGetValidPreprocessedDatesConfigIntegration:
         try:
             from aopy_nwb_conv.utils.config import Config
             config = Config()
-            
+
             # Get the date format from config
             date_format = config.get_date_format()
-            
+
             paths = config.get_paths()
             preprocessing_path = paths.get('monkey_preprocessed')
 
@@ -395,11 +394,11 @@ class TestGetValidPreprocessedDatesConfigIntegration:
             pytest.skip(f"Config setup failed: {e}")
 
         # The function should use the config's date format
-        result = get_valid_preprocessed_dates(Path(preprocessing_path), "subject123")
-        
+        result = get_valid_preprocessed_dates(Path(preprocessing_path), "subject123", max=1000)
+
         # If we got results, the date format worked
         assert isinstance(result, list)
-        
+
         print(f"✓ Date format '{date_format}' used successfully")
         print(f"✓ Found {len(result)} files")
 
@@ -420,9 +419,9 @@ class TestGetValidPreprocessedDatesParametrized:
         """Test with different date formats"""
         mock_config = MagicMock()
         mock_config.get_date_format.return_value = date_format
-        
+
         fake_files = [f"/path/to/{file_pattern}"]
-        
+
         # Create appropriate regex for the format
         if date_format == "%Y%m%d":
             regex = r'\d{8}'
@@ -430,13 +429,13 @@ class TestGetValidPreprocessedDatesParametrized:
             regex = r'\d{4}-\d{2}-\d{2}'
         elif date_format == "%d%m%Y":
             regex = r'\d{8}'
-        
+
         with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
             with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=regex):
-                    with patch('aopy_nwb_conv.file_utils.extract_date_from_string', return_value=expected_date):
-                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
-                        
+                    with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', return_value=expected_date):
+                        result = get_valid_preprocessed_dates("/fake/path", "subject123", max=1000)
+
                         assert len(result) == 1
                         assert result[0][1] == expected_date
 
@@ -448,24 +447,24 @@ class TestGetValidPreprocessedDatesParametrized:
 def demonstrate_config_mocking():
     """
     This demonstrates how the mocking approach works with your Config class.
-    
+
     Your actual code does:
         config = Config()
         date_format = config.get_date_format()
-    
+
     Our mock does:
         mock_config = MagicMock()
         mock_config.get_date_format.return_value = "%Y%m%d"
-        
+
         with patch('module.Config', return_value=mock_config):
             # When Config() is called, it returns mock_config
             # When get_date_format() is called on that, it returns "%Y%m%d"
     """
-    
+
     # Create mock that mimics your Config class
     mock_config = MagicMock()
     mock_config.get_date_format.return_value = "%Y%m%d"
-    
+
     # This simulates what happens in the test
     with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
         # Inside your function, this happens:
@@ -480,6 +479,6 @@ if __name__ == "__main__":
     demonstrate_config_mocking()
     print("✓ Mocking approach matches your Config class structure")
     print()
-    
+
     # Run tests
     pytest.main([__file__, "-v", "-s"])

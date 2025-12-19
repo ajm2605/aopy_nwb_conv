@@ -1,7 +1,9 @@
 import pickle
 import tempfile
-from typing import Optional, Union
 from pathlib import Path
+from typing import Optional, Union
+
+from aopy_nwb_conv.utils.config import Config
 
 _cached_files = {}
 _cache_loaded = {}

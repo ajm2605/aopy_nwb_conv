@@ -6,7 +6,12 @@ from pathlib import Path
 import pytest
 import yaml
 
-from aopy_nwb_conv.utils.config import Config, get_config, reset_config, set_config
+from aopy_nwb_conv.utils.config import (
+    Config, 
+    get_config, 
+    reset_config, 
+    set_config
+    ) 
 
 
 def test_check_env():
@@ -484,8 +489,8 @@ class TestConfigIntegration:
     """Integration tests with actual data locator."""
 
     def test_data_locator_uses_config(self, tmp_path):
-        """Test that DataLocator can use config."""
-        from aopy_nwb_conv.core.data_locator import DataLocator
+        """Test that data_locator can use config."""
+        from aopy_nwb_conv.core.data_locator import data_locator
         from aopy_nwb_conv.utils.config import set_config
 
         # Create mock data structure
@@ -502,8 +507,8 @@ class TestConfigIntegration:
         # Set global config
         set_config(config_file)
 
-        # DataLocator should use config
-        locator = DataLocator()  # No argument!
+        # data_locator should use config
+        locator = data_locator()  # No argument!
         assert locator.data_root == data_dir
 
         # Should be able to locate session
@@ -512,7 +517,7 @@ class TestConfigIntegration:
 
     def test_data_locator_override_config(self, tmp_path):
         """Test that explicit path overrides config."""
-        from aopy_nwb_conv.core.data_locator import DataLocator
+        from aopy_nwb_conv.core.data_locator import data_locator
         from aopy_nwb_conv.utils.config import set_config
 
         # Create two data directories
@@ -530,12 +535,12 @@ class TestConfigIntegration:
         set_config(config_file)
 
         # But explicitly use data2
-        locator = DataLocator(data_root=data_dir2)
+        locator = data_locator(data_root=data_dir2)
         assert locator.data_root == data_dir2
 
     def test_data_locator_fails_without_config(self):
-        """Test that DataLocator fails gracefully without config."""
-        from aopy_nwb_conv.core.data_locator import DataLocator
+        """Test that data_locator fails gracefully without config."""
+        from aopy_nwb_conv.core.data_locator import data_locator
         from aopy_nwb_conv.utils.config import get_config
 
         # Get config without setting it (uses defaults)
@@ -543,4 +548,4 @@ class TestConfigIntegration:
 
         # Should raise ValueError with helpful message
         with pytest.raises(ValueError, match="data_root must be provided"):
-            DataLocator()
+            data_locator()

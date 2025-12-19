@@ -1,9 +1,9 @@
+import shutil
 import tempfile
 from pathlib import Path
-import pytest
-import shutil
 
-from aopy_nwb_conv.utils.cache import get_temp_cache_path, load_cache_pickle, save_cache_pickle
+import pytest
+
 from aopy_nwb_conv.utils.cache import (
     _cache_loaded,
     _cached_files,
@@ -11,7 +11,12 @@ from aopy_nwb_conv.utils.cache import (
     clear_cache,
     find_file_ext,
     get_cached_files,
+    get_temp_cache_path,
+    load_cache_pickle,
+    save_cache_pickle,
 )
+from aopy_nwb_conv.utils.config import Config
+
 @pytest.fixture
 def test_directory():
     """Create a temporary directory with test files"""
@@ -482,6 +487,8 @@ class TestGetCachedFiles:
 
     def test_get_cached_files_invalid_extension_no_config(self):
         """Test that unsupported extension without directory raises error"""
+        
+        #print(Config.get_paths())
         with pytest.raises(ValueError, match="No default config path"):
             get_cached_files(extension="xyz")
 
