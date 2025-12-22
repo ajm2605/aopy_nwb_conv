@@ -209,11 +209,16 @@ class TestGetValidPreprocessedDatesUnit:
                 return expected_dates[1]
             return None
 
-        with patch('aopy_nwb_conv.utils.config.Config', return_value=mock_config):
-            with patch('aopy_nwb_conv.utils.cache.get_cached_files', return_value=fake_files):
+        with patch('aopy_nwb_conv.utils.date_validation.Config', return_value=mock_config):
+            with patch('aopy_nwb_conv.utils.date_validation.get_cached_files', return_value=fake_files):
                 with patch('aopy_nwb_conv.utils.date_validation.define_date_regex', return_value=r'\d{4}-\d{2}-\d{2}'):
                     with patch('aopy_nwb_conv.utils.date_validation.extract_date_from_string', side_effect=mock_extract_date):
-                        result = get_valid_preprocessed_dates("/fake/path", "subject123")
+                        result = get_valid_preprocessed_dates(
+                            "/fake/path",
+                            "subject123",
+                            max=1000,
+                            force_refresh=True
+                            )
 
                         assert len(result) == 2
 
