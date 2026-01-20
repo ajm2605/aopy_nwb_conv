@@ -19,16 +19,6 @@ def get_default_config_paths():
         Path.home() / ".aopy_nwb_conv" / "config.yaml",
         package_root / "config" / "config.yaml",
     ]
-"""def get_default_config_paths():
-    ""Return list of default config paths (evaluated at call time).""
-    
-    package_root = Path()
-    return [
-        Path.cwd() / "config.yaml",                    # Current directory
-        Path.cwd() / "config" / "config.yaml",         # config/ subdirectory
-        Path.home() / ".aopy_nwb_conv" / "config.yaml", # User home directory
-        Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Package directory
-    ]"""
 
 
 class Config:
