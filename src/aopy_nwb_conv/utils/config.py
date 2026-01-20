@@ -3,19 +3,32 @@
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-
+import aopy_nwb_conv
 import yaml
 
 
 # Default search paths for config file
 def get_default_config_paths():
     """Return list of default config paths (evaluated at call time)."""
+    # Get package installation directory, then navigate to repo root
+    package_root = Path(aopy_nwb_conv.__file__).parent.parent.parent
+    
+    return [
+        Path.cwd() / "config.yaml",
+        Path.cwd() / "config" / "config.yaml",
+        Path.home() / ".aopy_nwb_conv" / "config.yaml",
+        package_root / "config" / "config.yaml",
+    ]
+"""def get_default_config_paths():
+    ""Return list of default config paths (evaluated at call time).""
+    
+    package_root = Path()
     return [
         Path.cwd() / "config.yaml",                    # Current directory
         Path.cwd() / "config" / "config.yaml",         # config/ subdirectory
         Path.home() / ".aopy_nwb_conv" / "config.yaml", # User home directory
         Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Package directory
-    ]
+    ]"""
 
 
 class Config:

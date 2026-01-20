@@ -13,11 +13,13 @@ def parse_preproc_filename_substrings(filepath):
 
     return(matches[0])
 
-def find_session_file_paths(subject, te_id):
+def preproc_find_session_file_paths(subject, te_id):
     """This takes in a path that goes to a single session and
     returns a datastruct with the sorted paths of all binary/raw files"""
 
     config = Config()
+    print(config)
+    assert config is not None, "Config could not be loaded"
     preprocessed_path = config.get_paths()['monkey_preprocessed'] / subject
     session_file_paths = list(preprocessed_path.glob(f"*{te_id}*.hdf"))
 

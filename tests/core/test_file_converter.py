@@ -1,6 +1,6 @@
 import pytest
 
-from aopy_nwb_conv.core.file_converter import find_session_file_paths
+from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths
 from aopy_nwb_conv.utils.config import Config
 from aopy_nwb_conv.utils.date_validation import get_valid_preprocessed_dates
 
@@ -14,5 +14,9 @@ class TestFindSessionFilePaths:
 
 
     def test_get_valid_preprocessed_file_paths(self):
-        session_paths = find_session_file_paths(self.test_subject, self.test_te_id)
+        session_paths = preproc_find_session_file_paths(self.test_subject, self.test_te_id)
         print(session_paths)
+
+    def test_config_working(self):
+        print(self.config.get_paths())
+        assert self.config is not None
