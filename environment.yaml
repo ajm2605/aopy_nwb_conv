@@ -38,6 +38,8 @@ dependencies:
   
   # NWB and neurophysiology
   - pynwb
+  - neuroconv
+  - spikeinterface
   
   # Development tools
   - pytest>=7.0

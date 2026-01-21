@@ -90,3 +90,35 @@ def preproc_convert(subject, te_id):
     filepaths = find_session_file_paths(subject, te_id)
     
     #What do I need to make this happen?
+
+
+
+#def convert_ecube_raw(te_id, output_path=None):
+    
+
+
+def convert_aopy_to_nwb(te_id, output_path):   
+
+    #Generate correct output path  
+    if output_path is None:
+        config = Config()
+        assert config is not None, "Config could not be loaded"
+        output_path = config.get_paths()['nwb_output']
+        
+    output_path.mkdir(parents=True, exist_ok=True)
+    output_path = output_path / f"{te_id}.nwb"
+    
+    #Before we can make an empty file, we need a few things:
+    #1. Probe info
+    #2. Sampling_frequency
+    #3. Num channels
+    #4. dtype
+    #5. Metadata stuff
+
+    
+    #First, lets create the empty NWB file
+
+    #Lets start with the ecube raw data
+    #Now, lets figure out where all the data is:
+    filepaths = raw_ecube_find_session_file_paths(te_id)
+
