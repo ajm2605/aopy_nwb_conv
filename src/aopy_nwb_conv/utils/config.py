@@ -146,6 +146,20 @@ class Config:
 
         return paths
 
+    def get_probes(self):
+        """Get relevant paths from configuration."""
+        data_root = Path(self.get('data.data_root'))
+        data_output = Path(self.get('data.output_root'))
+        probe_paths = self.get('probeinterface_paths', {})
+
+        paths = {'data_root': data_root, 'data_output': data_output}
+
+        for key, subdir in subdirs.items():
+            subdir_path = data_root / subdir
+            paths[key] = subdir_path
+
+        return paths
+
     def get_nhp_subjects(self) -> Dict[str, str]:
         """Get mapping of NHP subject codes to names."""
         nhp_subjects = self.get('nhp_subjects', {})

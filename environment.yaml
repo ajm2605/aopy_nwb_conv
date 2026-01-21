@@ -40,6 +40,7 @@ dependencies:
   - pynwb
   - neuroconv
   - spikeinterface
+  - probeinterface
   
   # Development tools
   - pytest>=7.0

@@ -47,6 +47,7 @@ dependencies = [
     "pynwb",
     "neuroconv",
     "spikeinterface",
+    "probeinterface",
 ]
 
 [project.optional-dependencies]

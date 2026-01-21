@@ -3,7 +3,7 @@ from pathlib import Path
 from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, raw_ecube_find_session_file_paths
 from aopy_nwb_conv.utils.config import Config
 
-
+from probeinterface import write_probeinterface, read_probeinterface
 class TestFindSessionFilePaths:
     """Test find session file paths"""
     config = Config()
@@ -85,3 +85,16 @@ class TestFindSessionFilePaths:
             filename = Path(analog_file).name.lower()
             assert 'analog' in filename
             assert 'settings' not in filename
+
+class TestConvertAopyToNWB:
+    """Test find session file paths"""
+    config = Config()
+    preprocessed_path = config.get_paths()['monkey_preprocessed']
+    test_subject = 'churro'
+    test_te_id = 21077
+
+    def test_config_probe(self):
+        t = self.config.get('probeinterface_paths')
+        print(read_probeinterface(t['churro_fma']))
+    #def test_conversion(self):
+    #    convert_aopy_to_nwb(self.test_te_id, )

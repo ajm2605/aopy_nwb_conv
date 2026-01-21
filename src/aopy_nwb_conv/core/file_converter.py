@@ -103,7 +103,7 @@ def convert_aopy_to_nwb(te_id, output_path):
     if output_path is None:
         config = Config()
         assert config is not None, "Config could not be loaded"
-        output_path = config.get_paths()['nwb_output']
+        output_path = config.get_paths()['data_output']
         
     output_path.mkdir(parents=True, exist_ok=True)
     output_path = output_path / f"{te_id}.nwb"
