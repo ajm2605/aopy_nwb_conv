@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional
 import aopy_nwb_conv
 import yaml
 
+from probeinterface import write_probeinterface, read_probeinterface
 
 # Default search paths for config file
 def get_default_config_paths():
@@ -152,13 +153,9 @@ class Config:
         data_output = Path(self.get('data.output_root'))
         probe_paths = self.get('probeinterface_paths', {})
 
-        paths = {'data_root': data_root, 'data_output': data_output}
+        probe_groups = {key: read_probeinterface(pth) for key, pth in probe_paths.items()}
 
-        for key, subdir in subdirs.items():
-            subdir_path = data_root / subdir
-            paths[key] = subdir_path
-
-        return paths
+        return probe_groups
 
     def get_nhp_subjects(self) -> Dict[str, str]:
         """Get mapping of NHP subject codes to names."""

@@ -4,7 +4,6 @@ from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, r
 from aopy_nwb_conv.utils.config import Config
 
 from probeinterface import write_probeinterface, read_probeinterface
-from probeinterface.plotting import plot_probe, plot_probe_group
 
 class TestFindSessionFilePaths:
     """Test find session file paths"""
@@ -96,11 +95,7 @@ class TestConvertAopyToNWB:
     test_te_id = 21077
 
     def test_config_probe(self):
-        t = self.config.get('probeinterface_paths')
-        prb = read_probeinterface(t['churro_fma'])
-        
-        
-        plot_probe_group(prb)
-        
+        t = self.config.get_probes()
+        print(t['churro_fma'])
     #def test_conversion(self):
     #    convert_aopy_to_nwb(self.test_te_id, )

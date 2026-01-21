@@ -94,10 +94,12 @@ def preproc_convert(subject, te_id):
 
 
 #def convert_ecube_raw(te_id, output_path=None):
+def get_probe_info(probe_id):
+    probe_paths = Config().get('')
     
 
 
-def convert_aopy_to_nwb(te_id, output_path):   
+def convert_aopy_to_nwb(te_id, probe_id, output_path):   
 
     #Generate correct output path  
     if output_path is None:
@@ -110,6 +112,8 @@ def convert_aopy_to_nwb(te_id, output_path):
     
     #Before we can make an empty file, we need a few things:
     #1. Probe info
+    prb = self.config.get_probes()[probe_id]
+    
     #2. Sampling_frequency
     #3. Num channels
     #4. dtype
