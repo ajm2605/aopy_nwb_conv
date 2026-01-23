@@ -1,8 +1,9 @@
 import pytest
 from pathlib import Path
-from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, raw_ecube_find_session_file_paths
+from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, raw_ecube_filepath_metadata, parse_ecube_raw_files
 from aopy_nwb_conv.utils.config import Config
 
+from aopy.data.bmi3d import load_ecube_metadata
 from probeinterface import write_probeinterface, read_probeinterface
 
 class TestFindSessionFilePaths:
@@ -22,7 +23,7 @@ class TestFindSessionFilePaths:
 
     def test_get_valid_preprocessed_file_paths(self):
         """Test that preprocessed file paths are found and categorized correctly"""
-        session_paths = preproc_find_session_file_paths(self.test_subject, self.test_te_id)
+        session_paths = raw_ecube_filepath_metadata(self.test_subject, self.test_te_id)
         
         # Should return a dictionary
         assert isinstance(session_paths, dict)
@@ -87,6 +88,83 @@ class TestFindSessionFilePaths:
             assert 'analog' in filename
             assert 'settings' not in filename
 
+
+class TestRawEcubeFilepathMetadata:
+    """Test raw_ecube_filepath_metadata function"""
+    config = Config()
+    test_te_id = 21077
+    
+    def test_metadata_structure(self):
+        """Test that metadata has correct structure"""
+        metadata = raw_ecube_filepath_metadata(self.test_te_id)
+
+        assert metadata is not None
+        assert 'Analog' in metadata
+        assert 'Digital' in metadata
+        assert 'Headstage' in metadata
+    
+    def test_metadata_contains_file_paths(self):
+        """Test that each category's metadata contains file_paths key"""
+        metadata = raw_ecube_filepath_metadata(self.test_te_id)
+        
+        for category, metadata_dict in metadata.items():
+            # Each category should have a metadata dictionary
+            assert isinstance(metadata_dict, dict)
+            
+            # Should contain file_paths key
+            assert 'file_paths' in metadata_dict
+            
+            # file_paths should be a list
+            assert isinstance(metadata_dict['file_paths'], list)
+    
+    def test_metadata_file_paths_exist(self):
+        """Test that all file paths in metadata actually exist"""
+        metadata = raw_ecube_filepath_metadata(self.test_te_id)
+        
+        for category, metadata_dict in metadata.items():
+            for file_path in metadata_dict['file_paths']:
+                # Should be a string path
+                assert isinstance(file_path, str)
+                
+                # Path should exist
+                assert Path(file_path).exists()
+    
+    def test_metadata_has_additional_info(self):
+        """Test that metadata contains more than just file_paths"""
+        metadata = raw_ecube_filepath_metadata(self.test_te_id)
+        
+        # At least one category should have metadata beyond file_paths
+        has_additional_metadata = False
+        for category, metadata_dict in metadata.items():
+            if len(metadata_dict.keys()) > 1:  # More than just 'file_paths'
+                has_additional_metadata = True
+                break
+        
+        assert has_additional_metadata, "Metadata should contain information beyond just file_paths"
+    
+    def test_metadata_file_categorization(self):
+        """Test that files in each category match their category name"""
+        metadata = raw_ecube_filepath_metadata(self.test_te_id)
+        
+        
+        # Analog files should contain 'analog' (and not 'settings')
+        for analog_file in metadata['Analog']['file_paths']:
+            filename = Path(analog_file).name.lower()
+            assert 'analog' in filename
+            assert 'settings' not in filename
+        
+        # Digital files should contain 'digital'
+        for digital_file in metadata['Digital']['file_paths']:
+            filename = Path(digital_file).name.lower()
+            assert 'digital' in filename
+            assert 'settings' not in filename
+        
+        # Headstage files should contain 'headstage'
+        for headstage_file in metadata['Headstage']['file_paths']:
+            filename = Path(headstage_file).name.lower()
+            assert 'headstage' in filename
+            assert 'settings' not in filename
+
 class TestConvertAopyToNWB:
     """Test find session file paths"""
     config = Config()
@@ -97,5 +175,6 @@ class TestConvertAopyToNWB:
     def test_config_probe(self):
         t = self.config.get_probes()
         print(t['churro_fma'])
-    #def test_conversion(self):
-    #    convert_aopy_to_nwb(self.test_te_id, )
+    
+    def test_conversion(self):
+        convert_aopy_to_nwb(self.test_te_id, )

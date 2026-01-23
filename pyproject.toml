@@ -48,6 +48,7 @@ dependencies = [
     "neuroconv",
     "spikeinterface",
     "probeinterface",
+    "aolab-aopy",
 ]
 
 [project.optional-dependencies]

@@ -3,46 +3,40 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  # Python version
+# Python version
   - python>=3.8,<3.13
   
-  # Core scientific computing
+# CRITICAL: Force compatible C++ standard library
+  - libstdcxx-ng
+  - libgcc-ng
+  
+# Core scientific computing
   - numpy
   - scipy
   - pandas
   - xarray
-  
-  # Data I/O
+# Data I/O
   - h5py
   - pytables  # provides 'tables' package
   - pyyaml
   - xlrd
   - openpyxl
-  
-  # Visualization
+# Visualization
   - matplotlib>=3.9
   - seaborn>=0.13.2
   - pillow
-  
-  # Signal processing
+# Signal processing
   - pywavelets
   - scikit-learn>=1.0
   - statsmodels
-  
-  # System utilities
+# System utilities
   - psutil
   - tqdm
-  
-  # Symbolic math
+# Symbolic math
   - sympy
-  
-  # NWB and neurophysiology
+# NWB and neurophysiology
   - pynwb
-  - neuroconv
-  - spikeinterface
-  - probeinterface
-  
-  # Development tools
+# Development tools
   - pytest>=7.0
   - pytest-cov>=4.0
   - pytest-xdist>=3.0
@@ -50,24 +44,20 @@ dependencies:
   - black>=23.0
   - mypy>=1.0
   - pre-commit>=3.0
-  
-  # Documentation
+# Documentation
   - sphinx>=6.0
   - sphinx_rtd_theme>=1.0
   - myst-parser>=2.0
-  
-  # Jupyter
+# Jupyter
   - jupyter
   - ipykernel>=6.0
   - ipywidgets>=8.0
   - notebook
   - jupyterlab
-  
-  # Build tools
+# Build tools
   - pip
   - hatchling
-  
-  # pip-only dependencies (not available via conda or better from pip)
+# pip-only dependencies (not available via conda or better from pip)
   - pip:
     - nitime
     - open-ephys-python-tools
@@ -76,3 +66,7 @@ dependencies:
     - remodnav
     - nwbwidgets>=0.11.0
     - sphinx-autodoc-typehints>=1.0
+    - aolab-aopy
+    - neuroconv
+    - spikeinterface
+    - probeinterface
