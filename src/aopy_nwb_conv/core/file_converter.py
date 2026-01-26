@@ -1,40 +1,19 @@
 from aopy_nwb_conv.utils.config import Config
+from aopy_nwb_conv.utils.date_validation import default_extract_date_from_string
+from aopy_nwb_conv.utils.file_utils import write_array_to_temp_binary
 from pathlib import Path
 from typing import Dict, List
 from aopy.data.bmi3d import load_ecube_metadata
 from aopy.data.base import load_preproc_broadband_data
+import numpy as np
+
+import spikeinterface.extractors as se
+from neuroconv.tools import spikeinterface as nwb_si
+
 #(preproc_dir, subject, te_id, date, cached=True)
 #from aopy.data.bmi3d import load_ecube_metadata
 #What is it that I want ot accomplish here? What is the minimum that I want? I want to give a function a teid for 
 #a session and get back an NWB file. I'm fine with it being built from the preprocessed files.
-
-@lru_cache(maxsize=2)
-def load_hdf_data(file_path, data_name, data_group="/"):
-    '''
-    Clear cache when needed
-    load_hdf_data.cache_clear()
-    
-    Load data from an hdf file as a numpy array (cached)
-
-    Args:
-        file_path (str or Path): full path to the hdf file
-        data_name (str): table to load
-        data_group (str, optional): from which group to load data
-    
-    Returns:
-        ndarray: numpy array of data from hdf
-    '''
-    with h5py.File(str(file_path), 'r') as hdf:
-        full_data_name = os.path.join(data_group, data_name).replace("\\", "/")
-        
-        if full_data_name not in hdf:
-            raise ValueError(f'{full_data_name} not found in file {file_path}')
-        
-        _, data = _load_hdf_dataset(hdf[full_data_name], data_name)
-    
-    return np.array(data)
-
-
 
 def parse_preproc_filename_substrings(filepath):
     substring_list = ['broadband', 'lfp', 'ap', 'exp', 'spike', 'eye']
@@ -92,7 +71,6 @@ def raw_ecube_filepath_metadata(te_id):
     assert config is not None, "Config could not be loaded"
     raw_root = config.get_paths()['monkey_raw'] / 'ecube'
     session_file = list(raw_root.glob(f"*{te_id}*"))
-    print(session_file)
     if len(session_file)==0:
         raise FileNotFoundError(f"No raw ecube session found for TE ID {te_id}")
     elif len(session_file)>1:
@@ -114,7 +92,6 @@ def preproc_find_session_file_paths(subject, te_id):
     returns a datastruct with the sorted paths of all binary/raw files"""
 
     config = Config()
-    print(config)
     assert config is not None, "Config could not be loaded"
     preprocessed_path = config.get_paths()['monkey_preprocessed'] / subject
     session_file_paths = list(preprocessed_path.glob(f"*{te_id}*.hdf"))
@@ -150,7 +127,7 @@ def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):
     
     #Before we can make an empty file, we need a few things:
     #1. Probe info
-    prb = self.config.get_probes()[probe_id]
+    prb = config.get_probes()[probe_id]
     
     #2. Sampling_frequency
     if preproc:
@@ -158,6 +135,38 @@ def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):
     else:
         filepaths = raw_ecube_filepath_metadata(te_id)
     
+    date = default_extract_date_from_string(filepaths['broadband'])
+    [data, metadata] = load_preproc_broadband_data(config.get_paths()['monkey_preprocessed'], subject, te_id, date)
+
+
+    assert metadata['n_channels'] == prb.get_contact_count() , "Number of channels in data does not match probe contact count"
+
+    #Loading relevant info to make a spikeinterface recording
+    sampling_frequency = metadata['samplerate']
+    num_channels = metadata['n_channels']
+    dtype=data.dtype
+    volts_per_bit = metadata['voltsperbit']
+
+    #write out broadband to a temp binary file
+    tmp_bin = write_array_to_temp_binary(data)
+    
+    #Load broadband into spikeinterface recording
+    recording = se.read_binary(
+        tmp_bin, 
+        sampling_frequency=sampling_frequency, 
+        dtype=dtype, 
+        num_channels=num_channels, 
+        gain_to_uV=volts_per_bit,
+        )
+
+    #Set probe info and recording properties
+    recording = recording.set_probegroup(prb)
+    recording.set_channel_gains(volts_per_bit)
+    recording.set_channel_offsets(0)
+
+
+
+    return recording,data,metadata, prb
     #3. Num channels
     #4. dtype
     #5. Metadata stuff

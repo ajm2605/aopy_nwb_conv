@@ -62,6 +62,21 @@ def extract_date_from_string(
     else:
         return None
 
+def default_extract_date_from_string(file_name):
+    """Extract date from filename using default date format from config."""
+    # Convert Path objects to string
+    file_name_str = str(file_name)
+    
+    config = Config()
+    date_format = config.get_date_format()
+    date_regex = define_date_regex(date_format)
+    date_obj = extract_date_from_string(file_name_str, date_regex, date_format)
+    
+    # Return date as string without time information
+    if date_obj:
+        return date_obj.strftime("%Y-%m-%d")
+    else:
+        return None
 
 def get_valid_preprocessed_dates(
     preprocessed_path,

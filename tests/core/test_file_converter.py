@@ -1,10 +1,12 @@
 import pytest
 from pathlib import Path
-from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, raw_ecube_filepath_metadata, parse_ecube_raw_files
+from aopy_nwb_conv.core.file_converter import preproc_find_session_file_paths, raw_ecube_filepath_metadata, parse_ecube_raw_files, convert_aopy_to_nwb
 from aopy_nwb_conv.utils.config import Config
 
 from aopy.data.bmi3d import load_ecube_metadata
 from probeinterface import write_probeinterface, read_probeinterface
+from aopy_nwb_conv.utils.date_validation import default_extract_date_from_string
+import numpy as np
 
 class TestFindSessionFilePaths:
     """Test find session file paths"""
@@ -177,4 +179,8 @@ class TestConvertAopyToNWB:
         print(t['churro_fma'])
     
     def test_conversion(self):
-        convert_aopy_to_nwb(self.test_te_id, )
+        recording, data, metadata, prb = convert_aopy_to_nwb(self.test_subject, self.test_te_id, 'churro_fma', None)
+        #print(self.config.get_paths())
+        print(metadata)
+        print(data.dtype)
+        print(recording)
