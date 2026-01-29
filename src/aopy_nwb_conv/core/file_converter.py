@@ -4,12 +4,16 @@ from aopy_nwb_conv.utils.file_utils import write_array_to_temp_binary
 from pathlib import Path
 from typing import Dict, List
 from aopy.data.bmi3d import load_ecube_metadata
-from aopy.data.base import load_preproc_broadband_data
+from aopy.data.base import load_preproc_broadband_data, load_preproc_eye_data
 import numpy as np
+from datetime import datetime
 
 import spikeinterface.extractors as se
 from neuroconv.tools import spikeinterface as nwb_si
-
+import aopy
+from pynwb import NWBFile, NWBHDF5IO
+from pynwb.behavior import SpatialSeries, Position
+from aopy.data.bmi3d import get_kinematics
 #(preproc_dir, subject, te_id, date, cached=True)
 #from aopy.data.bmi3d import load_ecube_metadata
 #What is it that I want ot accomplish here? What is the minimum that I want? I want to give a function a teid for 
@@ -112,10 +116,76 @@ def preproc_convert(subject, te_id):
 def get_probe_info(probe_id):
     probe_paths = Config().get('')
     
+def get_probe_info(entry):
+    if entry.subject=='churro':
+        return 'churro_fma'
+    else:
+        raise NotImplementedError("Only churro probes are implemented currently")
+
+def add_spatial_series_to_nwbfile(nwbfile, spatial_series):
+    # Check if behavior module exists
+    if 'behavior' in nwbfile.processing:
+        behavior_module = nwbfile.processing['behavior']
+        # Check if Position container exists within behavior module
+        if 'Position' in behavior_module.data_interfaces:
+            position = behavior_module.data_interfaces['Position']
+            position.add_spatial_series(spatial_series)
+        else:
+            # Position doesn't exist, create it
+            position = Position(spatial_series=spatial_series)
+            behavior_module.add(position)
+    else:
+        # Behavior module doesn't exist, create it
+        behavior_module = nwbfile.create_processing_module(
+            name='behavior',
+            description='Behavioral data'
+        )
+        position = Position(spatial_series=spatial_series)
+        behavior_module.add(position)
+
+def add_aopy_eye_to_nwbfile(nwbfile, entry):
+    eye_data, eye_metadata = load_preproc_eye_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+    ts = np.arange(eye_metadata['n_samples']) / eye_metadata['samplerate']
+
+    
+    #position_data = np.random.rand(1000, 2)  # Replace with your actual data
+    #timestamps = np.linspace(0, 100, 1000)   # Replace with your actual timestamps
+
+    spatial_series = SpatialSeries(
+        name='eye_position',  # or whatever name you want
+        description='Position of eye in arena',
+        data=eye_data['raw_data'],  # shape should be (n_samples, 2) for x and y
+        timestamps=ts,
+        reference_frame='???',
+        unit='cm?? V?'  # or 'pixels', 'cm', etc.
+    )
+    add_spatial_series_to_nwbfile(nwbfile, spatial_series)
+    
+def add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor'):
+    
+    kin_data = get_kinematics(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date, 1000, datatype='cursor')
+    ts = np.arange(size(kin_data[0])[0]) / kin_data[1]
+
+    
+    #position_data = np.random.rand(1000, 2)  # Replace with your actual data
+    #timestamps = np.linspace(0, 100, 1000)   # Replace with your actual timestamps
+
+    spatial_series = SpatialSeries(
+        name=datatype,  # or whatever name you want
+        description= datatype,
+        data=kin_data[0],  # shape should be (n_samples, 2) for x and y
+        timestamps=ts,
+        reference_frame='???',
+        unit='cm'  # or 'pixels', 'cm', etc.
+    )
+    add_spatial_series_to_nwbfile(nwbfile, spatial_series)
 
 
-def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):   
 
+def convert_aopy_to_nwb(entry, output_path=None, preproc=True):   
+
+    assert preproc==True, "Only preprocessed conversion is implemented currently"
+    preproc_dir = Config().get_paths()['monkey_preprocessed']
     #Generate correct output path  
     if output_path is None:
         config = Config()
@@ -123,22 +193,18 @@ def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):
         output_path = config.get_paths()['data_output']
         
     output_path.mkdir(parents=True, exist_ok=True)
-    output_path = output_path / f"{te_id}.nwb"
+    output_path = output_path / f"{entry.subject}_{entry.id}.nwb"
     
     #Before we can make an empty file, we need a few things:
     #1. Probe info
+    probe_id = get_probe_info(entry)
     prb = config.get_probes()[probe_id]
     
-    #2. Sampling_frequency
-    if preproc:
-        filepaths = preproc_find_session_file_paths(subject, te_id)
-    else:
-        filepaths = raw_ecube_filepath_metadata(te_id)
-    
-    date = default_extract_date_from_string(filepaths['broadband'])
-    [data, metadata] = load_preproc_broadband_data(config.get_paths()['monkey_preprocessed'], subject, te_id, date)
+    #Load Experiment data
+    exp_data, exp_metadata = aopy.data.load_preproc_exp_data(preproc_dir, entry.subject, entry.id, entry.date)
 
-
+    #Load broadband data
+    [data, metadata] = load_preproc_broadband_data(config.get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
     assert metadata['n_channels'] == prb.get_contact_count() , "Number of channels in data does not match probe contact count"
 
     #Loading relevant info to make a spikeinterface recording
@@ -146,6 +212,21 @@ def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):
     num_channels = metadata['n_channels']
     dtype=data.dtype
     volts_per_bit = metadata['voltsperbit']
+    session_start_time = datetime.strptime(exp_metadata['date'], '%Y-%m-%d %H:%M:%S.%f')
+
+
+    #Create empty NWB file:
+    nwbfile = NWBFile(
+        session_description="Pull From HDF***",  # required
+        identifier=str(entry.id),  # required
+        session_start_time=session_start_time,  # required
+        experimenter=[
+            "Pull form HDF File",
+        ],  # optional
+        lab="Orsborn Lab",  # optional
+        institution="University of Washington",  # optional
+        experiment_description="Pull from HDF5 File",  # optional
+    )
 
     #write out broadband to a temp binary file
     tmp_bin = write_array_to_temp_binary(data)
@@ -157,16 +238,39 @@ def convert_aopy_to_nwb(subject, te_id, probe_id, output_path, preproc=True):
         dtype=dtype, 
         num_channels=num_channels, 
         gain_to_uV=volts_per_bit,
-        )
+    )
 
     #Set probe info and recording properties
     recording = recording.set_probegroup(prb)
     recording.set_channel_gains(volts_per_bit)
     recording.set_channel_offsets(0)
 
+    #Now add the recording to the NWB file
+    recording_metadata = {
+        'Ecephys': {
+            'ElectricalSeries': {
+                'name': exp_metadata['experimenter'],
+                'description': "Raw broadband data recorded from the Ecube System"
+            }
+        }
+    }
+
+    nwb_si.add_recording_to_nwbfile(
+        recording=recording,
+        nwbfile=nwbfile,
+        metadata=recording_metadata,
+        write_as='raw',
+    )
+
+    add_aopy_eye_to_nwbfile(nwbfile, entry)
+    add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
+    add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
+    with NWBHDF5IO(output_path, "w") as io:
+        io.write(nwbfile)
 
 
-    return recording,data,metadata, prb
+    #nwb_si.write_recording_to_nwbfile(recording=recording, nwbfile_path=output_path, metadata=metadata )
+    return output_path
     #3. Num channels
     #4. dtype
     #5. Metadata stuff

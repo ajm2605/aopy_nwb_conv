@@ -6,6 +6,7 @@ from aopy_nwb_conv.utils.config import Config
 from aopy.data.bmi3d import load_ecube_metadata
 from probeinterface import write_probeinterface, read_probeinterface
 from aopy_nwb_conv.utils.date_validation import default_extract_date_from_string
+from aopy.data.db import lookup_sessions
 import numpy as np
 
 class TestFindSessionFilePaths:
@@ -174,12 +175,14 @@ class TestConvertAopyToNWB:
     test_subject = 'churro'
     test_te_id = 21077
 
+    entry = lookup_sessions(subject=test_subject, id=test_te_id)[0]
+
     def test_config_probe(self):
         t = self.config.get_probes()
         print(t['churro_fma'])
     
     def test_conversion(self):
-        recording, data, metadata, prb = convert_aopy_to_nwb(self.test_subject, self.test_te_id, 'churro_fma', None)
+        recording, data, metadata, prb = convert_aopy_to_nwb(self.entry, None)
         #print(self.config.get_paths())
         print(metadata)
         print(data.dtype)
