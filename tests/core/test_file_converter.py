@@ -182,8 +182,5 @@ class TestConvertAopyToNWB:
         print(t['churro_fma'])
     
     def test_conversion(self):
-        recording, data, metadata, prb = convert_aopy_to_nwb(self.entry, None)
-        #print(self.config.get_paths())
-        print(metadata)
-        print(data.dtype)
-        print(recording)
+        output_path = convert_aopy_to_nwb(self.entry, None)
+        print(output_path)

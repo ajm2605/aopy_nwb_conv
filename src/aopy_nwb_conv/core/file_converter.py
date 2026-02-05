@@ -154,7 +154,7 @@ def add_aopy_eye_to_nwbfile(nwbfile, entry):
     spatial_series = SpatialSeries(
         name='eye_position',  # or whatever name you want
         description='Position of eye in arena',
-        data=eye_data['raw_data'],  # shape should be (n_samples, 2) for x and y
+        data=eye_data['raw_data'][:, :2],  # shape should be (n_samples, 2) for x and y
         timestamps=ts,
         reference_frame='???',
         unit='cm?? V?'  # or 'pixels', 'cm', etc.
@@ -164,7 +164,11 @@ def add_aopy_eye_to_nwbfile(nwbfile, entry):
 def add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor'):
     
     kin_data = get_kinematics(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date, 1000, datatype='cursor')
-    ts = np.arange(size(kin_data[0])[0]) / kin_data[1]
+    kin_out = kin_data[0]
+
+    print(datatype)
+    print(kin_data[0].shape)
+    ts = np.arange(np.shape(kin_data[0])[0]) / kin_data[1]
 
     
     #position_data = np.random.rand(1000, 2)  # Replace with your actual data
@@ -173,60 +177,31 @@ def add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor'):
     spatial_series = SpatialSeries(
         name=datatype,  # or whatever name you want
         description= datatype,
-        data=kin_data[0],  # shape should be (n_samples, 2) for x and y
+        data=kin_out,  # shape should be (n_samples, 2) for x and y
         timestamps=ts,
         reference_frame='???',
         unit='cm'  # or 'pixels', 'cm', etc.
     )
     add_spatial_series_to_nwbfile(nwbfile, spatial_series)
 
-
-
-def convert_aopy_to_nwb(entry, output_path=None, preproc=True):   
-
-    assert preproc==True, "Only preprocessed conversion is implemented currently"
-    preproc_dir = Config().get_paths()['monkey_preprocessed']
-    #Generate correct output path  
-    if output_path is None:
-        config = Config()
-        assert config is not None, "Config could not be loaded"
-        output_path = config.get_paths()['data_output']
-        
-    output_path.mkdir(parents=True, exist_ok=True)
-    output_path = output_path / f"{entry.subject}_{entry.id}.nwb"
-    
-    #Before we can make an empty file, we need a few things:
-    #1. Probe info
-    probe_id = get_probe_info(entry)
-    prb = config.get_probes()[probe_id]
-    
-    #Load Experiment data
-    exp_data, exp_metadata = aopy.data.load_preproc_exp_data(preproc_dir, entry.subject, entry.id, entry.date)
-
+def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
     #Load broadband data
-    [data, metadata] = load_preproc_broadband_data(config.get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
-    assert metadata['n_channels'] == prb.get_contact_count() , "Number of channels in data does not match probe contact count"
+    if datatype=='broadband':
+        [data, metadata] = load_preproc_broadband_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+    elif datatype=='lfp':
+        [data, metadata] = load_preproc_lfp_data(Config.get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+    elif datatype=='ap':
+        [data, metadata] = load_preproc_ap_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+    else:
+        raise ValueError(f"Datatype {datatype} not recognized for ephys data loading")
+
+    _, exp_metadata = aopy.data.load_preproc_exp_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
 
     #Loading relevant info to make a spikeinterface recording
     sampling_frequency = metadata['samplerate']
     num_channels = metadata['n_channels']
     dtype=data.dtype
     volts_per_bit = metadata['voltsperbit']
-    session_start_time = datetime.strptime(exp_metadata['date'], '%Y-%m-%d %H:%M:%S.%f')
-
-
-    #Create empty NWB file:
-    nwbfile = NWBFile(
-        session_description="Pull From HDF***",  # required
-        identifier=str(entry.id),  # required
-        session_start_time=session_start_time,  # required
-        experimenter=[
-            "Pull form HDF File",
-        ],  # optional
-        lab="Orsborn Lab",  # optional
-        institution="University of Washington",  # optional
-        experiment_description="Pull from HDF5 File",  # optional
-    )
 
     #write out broadband to a temp binary file
     tmp_bin = write_array_to_temp_binary(data)
@@ -262,9 +237,49 @@ def convert_aopy_to_nwb(entry, output_path=None, preproc=True):
         write_as='raw',
     )
 
+
+def convert_aopy_to_nwb(entry, output_path=None, preproc=True):   
+
+    assert preproc==True, "Only preprocessed conversion is implemented currently"
+    preproc_dir = Config().get_paths()['monkey_preprocessed']
+    #Generate correct output path  
+    if output_path is None:
+        config = Config()
+        assert config is not None, "Config could not be loaded"
+        output_path = config.get_paths()['data_output']
+        
+    output_path.mkdir(parents=True, exist_ok=True)
+    output_path = output_path / f"{entry.subject}_{entry.id}.nwb"
+    
+    #Before we can make an empty file, we need a few things:
+    #1. Probe info
+    probe_id = get_probe_info(entry)
+    prb = config.get_probes()[probe_id]
+    
+    #Load Experiment data
+    exp_data, exp_metadata = aopy.data.load_preproc_exp_data(preproc_dir, entry.subject, entry.id, entry.date)
+    
+    session_start_time = datetime.strptime(exp_metadata['date'], '%Y-%m-%d %H:%M:%S.%f')
+
+
+    #Create empty NWB file:
+    nwbfile = NWBFile(
+        session_description="Pull From HDF***",  # required
+        identifier=str(entry.id),  # required
+        session_start_time=session_start_time,  # required
+        experimenter=[
+            "Pull form HDF File",
+        ],  # optional
+        lab="Orsborn Lab",  # optional
+        institution="University of Washington",  # optional
+        experiment_description="Pull from HDF5 File",  # optional
+    )
+
+    add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband')
     add_aopy_eye_to_nwbfile(nwbfile, entry)
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
+    print('made it this far')
     with NWBHDF5IO(output_path, "w") as io:
         io.write(nwbfile)
 

@@ -68,5 +68,6 @@ dependencies:
     - sphinx-autodoc-typehints>=1.0
     - aolab-aopy
     - neuroconv
+    - ndx-events
     - spikeinterface
     - probeinterface
