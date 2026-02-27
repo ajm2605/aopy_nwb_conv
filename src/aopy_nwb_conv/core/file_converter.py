@@ -7,6 +7,7 @@ from aopy.data.bmi3d import load_ecube_metadata
 from aopy.data.base import load_preproc_broadband_data, load_preproc_eye_data
 import numpy as np
 from datetime import datetime
+import os
 
 import spikeinterface.extractors as se
 from neuroconv.tools import spikeinterface as nwb_si
@@ -113,14 +114,16 @@ def preproc_convert(subject, te_id):
 
 
 #def convert_ecube_raw(te_id, output_path=None):
-def get_probe_info(probe_id):
-    probe_paths = Config().get('')
+#def get_probe_info(probe_id):
+#    probe_paths = Config().get('')
     
 def get_probe_info(entry):
     if entry.subject=='churro':
         return 'churro_fma'
+    elif entry.subject=='beignet':
+        return 'beignet_ecog'
     else:
-        raise NotImplementedError("Only churro probes are implemented currently")
+        raise NotImplementedError("Only churro, beignet probes are implemented currently")
 
 def add_spatial_series_to_nwbfile(nwbfile, spatial_series):
     # Check if behavior module exists
@@ -207,38 +210,40 @@ def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
     tmp_bin = write_array_to_temp_binary(data)
     
     #Load broadband into spikeinterface recording
-    recording = se.read_binary(
-        tmp_bin, 
-        sampling_frequency=sampling_frequency, 
-        dtype=dtype, 
-        num_channels=num_channels, 
-        gain_to_uV=volts_per_bit,
-    )
+    try:
+        recording = se.read_binary(
+            tmp_bin, 
+            sampling_frequency=sampling_frequency, 
+            dtype=dtype, 
+            num_channels=num_channels, 
+            gain_to_uV=volts_per_bit,
+        )
 
-    #Set probe info and recording properties
-    recording = recording.set_probegroup(prb)
-    recording.set_channel_gains(volts_per_bit)
-    recording.set_channel_offsets(0)
+        #Set probe info and recording properties
+        recording = recording.set_probegroup(prb)
+        recording.set_channel_gains(volts_per_bit)
+        recording.set_channel_offsets(0)
 
-    #Now add the recording to the NWB file
-    recording_metadata = {
-        'Ecephys': {
-            'ElectricalSeries': {
-                'name': exp_metadata['experimenter'],
-                'description': "Raw broadband data recorded from the Ecube System"
+        #Now add the recording to the NWB file
+        recording_metadata = {
+            'Ecephys': {
+                'ElectricalSeries': {
+                    'name': exp_metadata['experimenter'],
+                    'description': "Raw broadband data recorded from the Ecube System"
+                }
             }
         }
-    }
 
-    nwb_si.add_recording_to_nwbfile(
-        recording=recording,
-        nwbfile=nwbfile,
-        metadata=recording_metadata,
-        write_as='raw',
-    )
+        nwb_si.add_recording_to_nwbfile(
+            recording=recording,
+            nwbfile=nwbfile,
+            metadata=recording_metadata,
+            write_as='raw',
+        )
+    finally:
+        os.remove(tmp_bin)
 
-
-def convert_aopy_to_nwb(entry, output_path=None, preproc=True):   
+def convert_aopy_to_nwb(entry, overwrite=False,output_path=None, preproc=True):   
 
     assert preproc==True, "Only preprocessed conversion is implemented currently"
     preproc_dir = Config().get_paths()['monkey_preprocessed']
@@ -251,6 +256,9 @@ def convert_aopy_to_nwb(entry, output_path=None, preproc=True):
     output_path.mkdir(parents=True, exist_ok=True)
     output_path = output_path / f"{entry.subject}_{entry.id}.nwb"
     
+    if output_path.exists() and not overwrite:
+        print(f"Skipping conversion for {entry.subject}_{entry.id} because output file exists and overwrite is False")
+        return output_path
     #Before we can make an empty file, we need a few things:
     #1. Probe info
     probe_id = get_probe_info(entry)
@@ -279,6 +287,17 @@ def convert_aopy_to_nwb(entry, output_path=None, preproc=True):
     add_aopy_eye_to_nwbfile(nwbfile, entry)
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
+
+    
+    df = aopy.data.bmi3d.tabulate_behavior_data_center_out(Config().get_paths()['monkey_preprocessed'], [entry.subject], [entry.id], [entry.date])
+
+    for r in df.itertuples():
+        nwbfile.add_trial(r.prev_trial_end_time, r.trial_end_time)
+
+    for col in df.columns:
+        if df[col].dtype != object:
+            nwbfile.add_trial_column(col, col, df[col].values)
+
     print('made it this far')
     with NWBHDF5IO(output_path, "w") as io:
         io.write(nwbfile)
