@@ -4,7 +4,7 @@ from aopy_nwb_conv.utils.file_utils import write_array_to_temp_binary
 from pathlib import Path
 from typing import Dict, List
 from aopy.data.bmi3d import load_ecube_metadata
-from aopy.data.base import load_preproc_broadband_data, load_preproc_eye_data
+from aopy.data.base import load_preproc_broadband_data, load_preproc_lfp_data, load_preproc_eye_data
 import numpy as np
 from datetime import datetime
 import os
@@ -148,7 +148,7 @@ def add_spatial_series_to_nwbfile(nwbfile, spatial_series):
 
 def add_aopy_eye_to_nwbfile(nwbfile, entry):
     eye_data, eye_metadata = load_preproc_eye_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
-    ts = np.arange(eye_metadata['n_samples']) / eye_metadata['samplerate']
+    ts = np.arange(eye_data['raw_data'].shape[0]) / eye_metadata['samplerate']
 
     
     #position_data = np.random.rand(1000, 2)  # Replace with your actual data
@@ -192,7 +192,7 @@ def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
     if datatype=='broadband':
         [data, metadata] = load_preproc_broadband_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
     elif datatype=='lfp':
-        [data, metadata] = load_preproc_lfp_data(Config.get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+        [data, metadata] = load_preproc_lfp_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
     elif datatype=='ap':
         [data, metadata] = load_preproc_ap_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
     else:
@@ -225,11 +225,16 @@ def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
         recording.set_channel_offsets(0)
 
         #Now add the recording to the NWB file
+        if 'experimenter' in exp_metadata.keys():
+            experimenter = exp_metadata['experimenter']
+        else:
+            experimenter = 'Unknown'
+
         recording_metadata = {
             'Ecephys': {
                 'ElectricalSeries': {
-                    'name': exp_metadata['experimenter'],
-                    'description': "Raw broadband data recorded from the Ecube System"
+                    'name': experimenter,
+                    'description': f"{datatype} data recorded from the Ecube System"
                 }
             }
         }
@@ -243,9 +248,12 @@ def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
     finally:
         os.remove(tmp_bin)
 
-def convert_aopy_to_nwb(entry, overwrite=False,output_path=None, preproc=True):   
+def convert_aopy_to_nwb(entry, ephys_datatype='lfp', overwrite=False,output_path=None, preproc=True):   
 
     assert preproc==True, "Only preprocessed conversion is implemented currently"
+    
+    sources = entry.get_preprocessed_sources()
+    
     preproc_dir = Config().get_paths()['monkey_preprocessed']
     #Generate correct output path  
     if output_path is None:
@@ -282,21 +290,21 @@ def convert_aopy_to_nwb(entry, overwrite=False,output_path=None, preproc=True):
         institution="University of Washington",  # optional
         experiment_description="Pull from HDF5 File",  # optional
     )
-
-    add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband')
+    
+    add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='lfp')
     add_aopy_eye_to_nwbfile(nwbfile, entry)
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
     add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
 
-    
-    df = aopy.data.bmi3d.tabulate_behavior_data_center_out(Config().get_paths()['monkey_preprocessed'], [entry.subject], [entry.id], [entry.date])
+    if entry.task_name=='manual control':
+        df = aopy.data.bmi3d.tabulate_behavior_data_center_out(Config().get_paths()['monkey_preprocessed'], [entry.subject], [entry.id], [entry.date])
 
-    for r in df.itertuples():
-        nwbfile.add_trial(r.prev_trial_end_time, r.trial_end_time)
+        for r in df.itertuples():
+            nwbfile.add_trial(r.prev_trial_end_time, r.trial_end_time)
 
-    for col in df.columns:
-        if df[col].dtype != object:
-            nwbfile.add_trial_column(col, col, df[col].values)
+        for col in df.columns:
+            if df[col].dtype != object:
+                nwbfile.add_trial_column(col, col, df[col].values)
 
     print('made it this far')
     with NWBHDF5IO(output_path, "w") as io:
