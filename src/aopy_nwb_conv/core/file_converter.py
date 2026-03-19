@@ -189,23 +189,35 @@ def add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor'):
 
 def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
     #Load broadband data
+
+    [_, exp_metadata] = aopy.data.base.load_preproc_exp_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date) 
     if datatype=='broadband':
         [data, metadata] = load_preproc_broadband_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+        sampling_frequency = metadata['samplerate']
     elif datatype=='lfp':
         [data, metadata] = load_preproc_lfp_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+        sampling_frequency = metadata['lfp_samplerate']
+        print(f"Loaded LFP data with shape {data.shape} and sampling frequency {sampling_frequency}")
     elif datatype=='ap':
         [data, metadata] = load_preproc_ap_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+        sampling_frequency = metadata['ap_samplerate']
     else:
         raise ValueError(f"Datatype {datatype} not recognized for ephys data loading")
 
-    _, exp_metadata = aopy.data.load_preproc_exp_data(Config().get_paths()['monkey_preprocessed'], entry.subject, entry.id, entry.date)
+    #if entry
+
+    if exp_metadata['drmap_drive_type']=='ECoG244':
+        #Ecog data, lets correctly remap acq channels
+        elec_pos, acq_ch, elecs = aopy.data.load_chmap(drive_type='ECoG244')
+        data = data[:, acq_ch-1]
 
     #Loading relevant info to make a spikeinterface recording
-    sampling_frequency = metadata['samplerate']
-    num_channels = metadata['n_channels']
+    
+    num_channels = np.shape(data)[1]#
     dtype=data.dtype
     volts_per_bit = metadata['voltsperbit']
 
+    data = data * volts_per_bit
     #write out broadband to a temp binary file
     tmp_bin = write_array_to_temp_binary(data)
     
@@ -221,8 +233,8 @@ def add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='broadband'):
 
         #Set probe info and recording properties
         recording = recording.set_probegroup(prb)
-        recording.set_channel_gains(volts_per_bit)
-        recording.set_channel_offsets(0)
+        #recording.set_channel_gains(volts_per_bit)
+        #recording.set_channel_offsets(0)
 
         #Now add the recording to the NWB file
         if 'experimenter' in exp_metadata.keys():
@@ -253,7 +265,8 @@ def convert_aopy_to_nwb(entry, ephys_datatype='lfp', overwrite=False,output_path
     assert preproc==True, "Only preprocessed conversion is implemented currently"
     
     sources = entry.get_preprocessed_sources()
-    
+    assert ephys_datatype in sources, f"Requested ephys datatype {ephys_datatype} not found in preprocessed sources for this session"
+
     preproc_dir = Config().get_paths()['monkey_preprocessed']
     #Generate correct output path  
     if output_path is None:
@@ -280,7 +293,7 @@ def convert_aopy_to_nwb(entry, ephys_datatype='lfp', overwrite=False,output_path
 
     #Create empty NWB file:
     nwbfile = NWBFile(
-        session_description="Pull From HDF***",  # required
+        session_description=entry.task_name,  # required
         identifier=str(entry.id),  # required
         session_start_time=session_start_time,  # required
         experimenter=[
@@ -288,13 +301,17 @@ def convert_aopy_to_nwb(entry, ephys_datatype='lfp', overwrite=False,output_path
         ],  # optional
         lab="Orsborn Lab",  # optional
         institution="University of Washington",  # optional
-        experiment_description="Pull from HDF5 File",  # optional
+        experiment_description=entry.task_name,  # optional
     )
     
-    add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype='lfp')
-    add_aopy_eye_to_nwbfile(nwbfile, entry)
-    add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
-    add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
+
+    add_aopy_ephys_to_nwbfile(nwbfile, entry, prb, datatype=ephys_datatype)
+    if 'eye' in sources:
+        add_aopy_eye_to_nwbfile(nwbfile, entry)
+    if 'cursor_interp' in exp_data.keys():
+        add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='cursor')
+    if 'hand_interp' in exp_data.keys():
+        add_aopy_kin_to_nwbfile(nwbfile, entry, datatype='hand')
 
     if entry.task_name=='manual control':
         df = aopy.data.bmi3d.tabulate_behavior_data_center_out(Config().get_paths()['monkey_preprocessed'], [entry.subject], [entry.id], [entry.date])
