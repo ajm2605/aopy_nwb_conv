@@ -45,6 +45,10 @@ dependencies = [
     "seaborn>=0.13.2",
     "remodnav",
     "pynwb",
+    "neuroconv",
+    "spikeinterface",
+    "probeinterface",
+    "aolab-aopy",
 ]
 
 [project.optional-dependencies]

@@ -3,23 +3,27 @@
 import os
 from pathlib import Path
 from typing import Any, Dict, Optional
-
+import aopy_nwb_conv
 import yaml
 
+from probeinterface import write_probeinterface, read_probeinterface
 
 # Default search paths for config file
 def get_default_config_paths():
     """Return list of default config paths (evaluated at call time)."""
+    # Get package installation directory, then navigate to repo root
+    package_root = Path(aopy_nwb_conv.__file__).parent.parent.parent
+    
     return [
-        Path.cwd() / "config.yaml",                    # Current directory
-        Path.cwd() / "config" / "config.yaml",         # config/ subdirectory
-        Path.home() / ".aopy_nwb_conv" / "config.yaml", # User home directory
-        Path(__file__).parent.parent.parent / "config" / "config.yaml",  # Package directory
+        Path.cwd() / "config.yaml",
+        Path.cwd() / "config" / "config.yaml",
+        Path.home() / ".aopy_nwb_conv" / "config.yaml",
+        package_root / "config" / "config.yaml",
     ]
 
 
 class Config:
-    """Configuration manager for aopy_nwb_conv.
+    """Configuget_valid_preprocessed_datesration manager for aopy_nwb_conv.
 
     Loads configuration from YAML file or environment variables.
     Priority order:
@@ -142,6 +146,16 @@ class Config:
             paths[key] = subdir_path
 
         return paths
+
+    def get_probes(self):
+        """Get relevant paths from configuration."""
+        data_root = Path(self.get('data.data_root'))
+        data_output = Path(self.get('data.output_root'))
+        probe_paths = self.get('probeinterface_paths', {})
+
+        probe_groups = {key: read_probeinterface(pth) for key, pth in probe_paths.items()}
+
+        return probe_groups
 
     def get_nhp_subjects(self) -> Dict[str, str]:
         """Get mapping of NHP subject codes to names."""
